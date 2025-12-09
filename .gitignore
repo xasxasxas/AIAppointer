@@ -1,12 +1,12 @@
-# Models (too large for Git)
-models/*.pkl
-models/*.json
-!models/.gitkeep
+# # Models (too large for Git)
+# models/*.pkl
+# models/*.json
+# !models/.gitkeep
 
-# Data (sensitive/large)
-data/*.csv
-*.csv
-!data/.gitkeep
+# # Data (sensitive/large)
+# data/*.csv
+# *.csv
+# !data/.gitkeep
 
 # Python
 __pycache__/

@@ -1,0 +1,506 @@
+{
+  "Asst to Chief ISS Horizon": [
+    "Commodore"
+  ],
+  "Asst to Chief RS Aurora": [
+    "Commodore"
+  ],
+  "Asst to Chief RS Meridian": [
+    "Commodore"
+  ],
+  "Asst to Chief SS Galileo": [
+    "Commodore"
+  ],
+  "Asst to Chief SS Prometheus": [
+    "Commodore"
+  ],
+  "Asst to Chief USS Aegis": [
+    "Commodore"
+  ],
+  "Asst to Chief USS Endeavor": [
+    "Commodore"
+  ],
+  "Asst to Chief USS Vanguard": [
+    "Commodore"
+  ],
+  "Asst to Chief USSF Daedalus": [
+    "Commodore"
+  ],
+  "Asst to Chief USV Nebula": [
+    "Commodore"
+  ],
+  "Commandant RS Meridian": [
+    "Commodore"
+  ],
+  "Commandant SS Prometheus": [
+    "Commodore"
+  ],
+  "Commandant USS Aegis": [
+    "Commodore"
+  ],
+  "Commandant USS Vanguard": [
+    "Commodore"
+  ],
+  "Commandant USSF Daedalus": [
+    "Commodore"
+  ],
+  "Dean ISS Horizon": [
+    "Captain"
+  ],
+  "Dean SS Galileo": [
+    "Captain"
+  ],
+  "Dean SS Prometheus": [
+    "Captain"
+  ],
+  "Dean USS Aegis": [
+    "Captain"
+  ],
+  "Dean USS Endeavor": [
+    "Captain"
+  ],
+  "Dean USS Vanguard": [
+    "Captain"
+  ],
+  "Dean USSF Daedalus": [
+    "Captain"
+  ],
+  "Dean USV Nebula": [
+    "Captain"
+  ],
+  "Director General RS Meridian": [
+    "Rear Admiral"
+  ],
+  "Director ISS Horizon": [
+    "Captain"
+  ],
+  "Director RS Aurora": [
+    "Captain"
+  ],
+  "Director RS Meridian": [
+    "Captain"
+  ],
+  "Director SS Galileo": [
+    "Captain"
+  ],
+  "Director SS Prometheus": [
+    "Captain"
+  ],
+  "Director USS Aegis": [
+    "Captain"
+  ],
+  "Director USS Endeavor": [
+    "Captain"
+  ],
+  "Director USS Vanguard": [
+    "Captain"
+  ],
+  "Director USSF Daedalus": [
+    "Captain"
+  ],
+  "Director USV Nebula": [
+    "Captain"
+  ],
+  "Div Officer ISS Horizon": [
+    "Lieutenant"
+  ],
+  "Div Officer RS Aurora": [
+    "Lieutenant"
+  ],
+  "Div Officer RS Meridian": [
+    "Lieutenant"
+  ],
+  "Div Officer SS Galileo": [
+    "Lieutenant"
+  ],
+  "Div Officer SS Prometheus": [
+    "Lieutenant"
+  ],
+  "Div Officer USS Aegis": [
+    "Lieutenant"
+  ],
+  "Div Officer USS Endeavor": [
+    "Lieutenant"
+  ],
+  "Div Officer USS Vanguard": [
+    "Lieutenant"
+  ],
+  "Div Officer USSF Daedalus": [
+    "Lieutenant"
+  ],
+  "Div Officer USV Nebula": [
+    "Lieutenant"
+  ],
+  "Dy Director ISS Horizon": [
+    "Lieutenant Commander",
+    "Commander"
+  ],
+  "Dy Director RS Aurora": [
+    "Lieutenant Commander",
+    "Commander"
+  ],
+  "Dy Director RS Meridian": [
+    "Lieutenant Commander",
+    "Commander"
+  ],
+  "Dy Director SS Galileo": [
+    "Lieutenant Commander",
+    "Commander"
+  ],
+  "Dy Director SS Prometheus": [
+    "Commander",
+    "Lieutenant Commander"
+  ],
+  "Dy Director USS Aegis": [
+    "Commander",
+    "Lieutenant Commander"
+  ],
+  "Dy Director USS Endeavor": [
+    "Commander",
+    "Lieutenant Commander"
+  ],
+  "Dy Director USS Vanguard": [
+    "Lieutenant Commander",
+    "Commander"
+  ],
+  "Dy Director USSF Daedalus": [
+    "Lieutenant Commander",
+    "Commander"
+  ],
+  "Dy Director USV Nebula": [
+    "Lieutenant Commander",
+    "Commander"
+  ],
+  "Dy Manager ISS Horizon": [
+    "Lieutenant",
+    "Lieutenant Commander"
+  ],
+  "Dy Manager RS Aurora": [
+    "Lieutenant",
+    "Lieutenant Commander"
+  ],
+  "Dy Manager RS Meridian": [
+    "Lieutenant",
+    "Lieutenant Commander"
+  ],
+  "Dy Manager SS Galileo": [
+    "Lieutenant",
+    "Lieutenant Commander"
+  ],
+  "Dy Manager SS Prometheus": [
+    "Lieutenant",
+    "Lieutenant Commander"
+  ],
+  "Dy Manager USS Aegis": [
+    "Lieutenant",
+    "Lieutenant Commander"
+  ],
+  "Dy Manager USS Endeavor": [
+    "Lieutenant",
+    "Lieutenant Commander"
+  ],
+  "Dy Manager USS Vanguard": [
+    "Lieutenant",
+    "Lieutenant Commander"
+  ],
+  "Dy Manager USSF Daedalus": [
+    "Lieutenant",
+    "Lieutenant Commander"
+  ],
+  "Dy Manager USV Nebula": [
+    "Lieutenant",
+    "Lieutenant Commander"
+  ],
+  "Dy Managing Director ISS Horizon": [
+    "Commodore"
+  ],
+  "Dy Managing Director RS Aurora": [
+    "Commodore"
+  ],
+  "Dy Managing Director RS Meridian": [
+    "Commodore"
+  ],
+  "Dy Managing Director SS Galileo": [
+    "Commodore"
+  ],
+  "Dy Managing Director USS Aegis": [
+    "Commodore"
+  ],
+  "Dy Managing Director USS Vanguard": [
+    "Commodore"
+  ],
+  "Dy Managing Director USV Nebula": [
+    "Commodore"
+  ],
+  "Dy to Chief SS Galileo": [
+    "Rear Admiral"
+  ],
+  "Dy to Chief SS Prometheus": [
+    "Rear Admiral"
+  ],
+  "Dy to Chief USS Aegis": [
+    "Rear Admiral"
+  ],
+  "Dy to Chief USS Endeavor": [
+    "Rear Admiral"
+  ],
+  "General Manager ISS Horizon": [
+    "Captain"
+  ],
+  "General Manager RS Aurora": [
+    "Captain"
+  ],
+  "General Manager RS Meridian": [
+    "Captain"
+  ],
+  "General Manager SS Galileo": [
+    "Captain"
+  ],
+  "General Manager SS Prometheus": [
+    "Captain"
+  ],
+  "General Manager USS Aegis": [
+    "Captain"
+  ],
+  "General Manager USS Endeavor": [
+    "Captain"
+  ],
+  "General Manager USS Vanguard": [
+    "Captain"
+  ],
+  "General Manager USSF Daedalus": [
+    "Captain"
+  ],
+  "General Manager USV Nebula": [
+    "Captain"
+  ],
+  "Head of Deptt ISS Horizon": [
+    "Lieutenant Commander"
+  ],
+  "Head of Deptt RS Aurora": [
+    "Lieutenant Commander"
+  ],
+  "Head of Deptt RS Meridian": [
+    "Lieutenant Commander"
+  ],
+  "Head of Deptt SS Galileo": [
+    "Lieutenant Commander"
+  ],
+  "Head of Deptt SS Prometheus": [
+    "Lieutenant Commander"
+  ],
+  "Head of Deptt USS Aegis": [
+    "Lieutenant Commander"
+  ],
+  "Head of Deptt USS Endeavor": [
+    "Lieutenant Commander"
+  ],
+  "Head of Deptt USS Vanguard": [
+    "Lieutenant Commander"
+  ],
+  "Head of Deptt USSF Daedalus": [
+    "Lieutenant Commander"
+  ],
+  "Head of Deptt USV Nebula": [
+    "Lieutenant Commander"
+  ],
+  "Instructor ISS Horizon": [
+    "Lieutenant",
+    "Lieutenant Commander"
+  ],
+  "Instructor RS Aurora": [
+    "Lieutenant",
+    "Lieutenant Commander"
+  ],
+  "Instructor RS Meridian": [
+    "Lieutenant",
+    "Lieutenant Commander"
+  ],
+  "Instructor SS Galileo": [
+    "Lieutenant",
+    "Lieutenant Commander"
+  ],
+  "Instructor SS Prometheus": [
+    "Lieutenant",
+    "Lieutenant Commander"
+  ],
+  "Instructor USS Aegis": [
+    "Lieutenant",
+    "Lieutenant Commander"
+  ],
+  "Instructor USS Endeavor": [
+    "Lieutenant",
+    "Lieutenant Commander"
+  ],
+  "Instructor USS Vanguard": [
+    "Lieutenant",
+    "Lieutenant Commander"
+  ],
+  "Instructor USSF Daedalus": [
+    "Lieutenant",
+    "Lieutenant Commander"
+  ],
+  "Instructor USV Nebula": [
+    "Lieutenant",
+    "Lieutenant Commander"
+  ],
+  "Manager ISS Horizon": [
+    "Commander"
+  ],
+  "Manager RS Aurora": [
+    "Commander"
+  ],
+  "Manager RS Meridian": [
+    "Commander"
+  ],
+  "Manager SS Galileo": [
+    "Commander"
+  ],
+  "Manager SS Prometheus": [
+    "Commander"
+  ],
+  "Manager USS Aegis": [
+    "Commander"
+  ],
+  "Manager USS Endeavor": [
+    "Commander"
+  ],
+  "Manager USS Vanguard": [
+    "Commander"
+  ],
+  "Manager USSF Daedalus": [
+    "Commander"
+  ],
+  "Manager USV Nebula": [
+    "Commander"
+  ],
+  "Managing Director ISS Horizon": [
+    "Commodore"
+  ],
+  "Managing Director SS Galileo": [
+    "Commodore"
+  ],
+  "Managing Director USS Endeavor": [
+    "Rear Admiral"
+  ],
+  "Managing Director USS Vanguard": [
+    "Rear Admiral",
+    "Commodore"
+  ],
+  "Managing Director USSF Daedalus": [
+    "Commodore"
+  ],
+  "Managing Director USV Nebula": [
+    "Commodore"
+  ],
+  "Snr Staff Officer ISS Horizon": [
+    "Captain"
+  ],
+  "Snr Staff Officer RS Aurora": [
+    "Captain"
+  ],
+  "Snr Staff Officer RS Meridian": [
+    "Captain"
+  ],
+  "Snr Staff Officer SS Galileo": [
+    "Captain"
+  ],
+  "Snr Staff Officer SS Prometheus": [
+    "Captain"
+  ],
+  "Snr Staff Officer USS Aegis": [
+    "Captain"
+  ],
+  "Snr Staff Officer USS Endeavor": [
+    "Captain"
+  ],
+  "Snr Staff Officer USS Vanguard": [
+    "Captain"
+  ],
+  "Snr Staff Officer USSF Daedalus": [
+    "Captain"
+  ],
+  "Snr Staff Officer USV Nebula": [
+    "Captain"
+  ],
+  "Staff Officer ISS Horizon": [
+    "Lieutenant",
+    "Lieutenant Commander"
+  ],
+  "Staff Officer RS Aurora": [
+    "Lieutenant",
+    "Lieutenant Commander"
+  ],
+  "Staff Officer RS Meridian": [
+    "Lieutenant",
+    "Lieutenant Commander"
+  ],
+  "Staff Officer SS Galileo": [
+    "Lieutenant",
+    "Lieutenant Commander"
+  ],
+  "Staff Officer SS Prometheus": [
+    "Lieutenant",
+    "Lieutenant Commander"
+  ],
+  "Staff Officer USS Aegis": [
+    "Lieutenant",
+    "Lieutenant Commander"
+  ],
+  "Staff Officer USS Endeavor": [
+    "Lieutenant",
+    "Lieutenant Commander"
+  ],
+  "Staff Officer USS Vanguard": [
+    "Lieutenant",
+    "Lieutenant Commander"
+  ],
+  "Staff Officer USSF Daedalus": [
+    "Lieutenant",
+    "Lieutenant Commander"
+  ],
+  "Staff Officer USV Nebula": [
+    "Lieutenant",
+    "Lieutenant Commander"
+  ],
+  "Training Officer ISS Horizon": [
+    "Lieutenant Commander",
+    "Commander"
+  ],
+  "Training Officer RS Aurora": [
+    "Lieutenant Commander",
+    "Commander"
+  ],
+  "Training Officer RS Meridian": [
+    "Commander",
+    "Lieutenant Commander"
+  ],
+  "Training Officer SS Galileo": [
+    "Lieutenant Commander",
+    "Commander"
+  ],
+  "Training Officer SS Prometheus": [
+    "Lieutenant Commander",
+    "Commander"
+  ],
+  "Training Officer USS Aegis": [
+    "Commander",
+    "Lieutenant Commander"
+  ],
+  "Training Officer USS Endeavor": [
+    "Lieutenant Commander",
+    "Commander"
+  ],
+  "Training Officer USS Vanguard": [
+    "Lieutenant Commander",
+    "Commander"
+  ],
+  "Training Officer USSF Daedalus": [
+    "Lieutenant Commander",
+    "Commander"
+  ],
+  "Training Officer USV Nebula": [
+    "Commander",
+    "Lieutenant Commander"
+  ]
+}
