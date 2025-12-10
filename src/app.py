@@ -6,7 +6,7 @@ import os
 # Add root to path so we can import src
 sys.path.append(os.getcwd())
 
-from src.inference import Predictor
+from src.predictor import Predictor
 from config import DATASET_PATH, UI_PAGE_TITLE, UI_LAYOUT
 
 st.set_page_config(page_title=UI_PAGE_TITLE, layout=UI_LAYOUT)
@@ -59,9 +59,15 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-@st.cache_resource
+@st.cache_resource(ttl=3600)
 def load_predictor():
     return Predictor()
+
+# --- CACHE CLEARING UTILITY ---
+def clear_cache():
+    st.cache_data.clear()
+    st.cache_resource.clear()
+
 
 @st.cache_data
 def load_data():
@@ -77,58 +83,70 @@ def main():
         df = load_data()
         
     # Navigation
-    mode = st.sidebar.radio("Mode", ["Employee Lookup", "Simulation", "Billet Lookup"])
+    mode = st.sidebar.radio("Mode", ["Employee Lookup", "Simulation", "Billet Lookup", "Branch Analytics"])
     
-    # Cache control
-    if st.sidebar.button("🔄 Clear Cache & Reload"):
-        st.cache_resource.clear()
-        st.cache_data.clear()
-        st.rerun()
+    # ... (Cache control) ...
     
     # Rank Flexibility Control (Global)
-    st.sidebar.markdown("---")
-    st.sidebar.markdown("### Constraint Settings")
+    with st.expander("⚙️ Advanced Settings (Rank Flexibility)"):
+        rank_flex_up = st.slider("Rank Flexibility (Up)", 0, 2, 0, help="Allow promotion of N levels from predicted rank")
+        rank_flex_down = st.slider("Rank Flexibility (Down)", 0, 2, 0, help="Allow demotion of N levels from predicted rank")
     
-    col_up, col_down = st.sidebar.columns(2)
+    if st.sidebar.button("🔄 Reload Models & Cache", help="Click if recent updates are not showing"):
+        clear_cache()
+        st.rerun()
     
-    with col_up:
-        rank_flex_up = st.slider(
-            "⬆️ Promotion",
-            min_value=0,
-            max_value=3,
-            value=0,
-            help="Allow roles N ranks ABOVE current rank"
-        )
-    
-    with col_down:
-        rank_flex_down = st.slider(
-            "⬇️ Demotion",
-            min_value=0,
-            max_value=3,
-            value=0,
-            help="Allow roles N ranks BELOW current rank"
-        )
-    
-    if rank_flex_up == 0 and rank_flex_down == 0:
-        st.sidebar.info("🔒 **Strict**: Exact rank only")
-    elif rank_flex_up > 0 and rank_flex_down == 0:
-        st.sidebar.info(f"⬆️ **Promotion-focused**: Up to +{rank_flex_up} ranks")
-    elif rank_flex_up == 0 and rank_flex_down > 0:
-        st.sidebar.warning(f"⬇️ **Demotion allowed**: Down to -{rank_flex_down} ranks")
-    else:
-        st.sidebar.warning(f"🎨 **Flexible**: +{rank_flex_up}/-{rank_flex_down} ranks")
-    
+    # =========================================================================
+    # MODE 1: EMPLOYEE LOOKUP (FILTERED ITERATION)
+    # =========================================================================
     if mode == "Employee Lookup":
-        st.header("Search Officer Record")
-        emp_id = st.number_input("Enter Employee ID", min_value=1, value=200001)
+        st.header("Search & Predict")
         
-        # Find Employee
-        record = df[df['Employee_ID'] == emp_id]
+        # 1. Filters
+        st.markdown("### 🔍 Filter Officers")
+        col_f1, col_f2, col_f3 = st.columns(3)
         
-        if not record.empty:
-            row = record.iloc[0]
+        all_ranks = sorted(df['Rank'].unique())
+        all_branches = sorted(df['Branch'].unique())
+        all_entries = sorted(df['Entry_type'].unique())
+        
+        with col_f1:
+            sel_rank = st.selectbox("Rank", ["All"] + list(all_ranks))
+        with col_f2:
+            sel_branch = st.selectbox("Branch", ["All"] + list(all_branches))
+        with col_f3:
+            sel_entry = st.selectbox("Entry Type", ["All"] + list(all_entries))
             
-            # Display Profile
+        # 2. Filter Data
+        filtered_df = df.copy()
+        if sel_rank != "All": filtered_df = filtered_df[filtered_df['Rank'] == sel_rank]
+        if sel_branch != "All": filtered_df = filtered_df[filtered_df['Branch'] == sel_branch]
+        if sel_entry != "All": filtered_df = filtered_df[filtered_df['Entry_type'] == sel_entry]
+        
+        count = len(filtered_df)
+        st.success(f"Found {count} officers matching criteria.")
+        
+        if count > 0:
+            # 3. Iteration Controls
+            if 'curr_idx' not in st.session_state: st.session_state.curr_idx = 0
+            
+            # Reset index if filters change (naive check: if index out of bounds)
+            if st.session_state.curr_idx >= count: st.session_state.curr_idx = 0
+            
+            col_prev, col_stat, col_next = st.columns([1, 2, 1])
+            with col_prev:
+                if st.button("⬅️ Previous"):
+                    st.session_state.curr_idx = (st.session_state.curr_idx - 1) % count
+            with col_next:
+                if st.button("Next ➡️"):
+                    st.session_state.curr_idx = (st.session_state.curr_idx + 1) % count
+            with col_stat:
+                st.markdown(f"<div style='text-align: center; font-weight: bold; padding-top: 10px;'>Officer {st.session_state.curr_idx + 1} of {count}</div>", unsafe_allow_html=True)
+                
+            # 4. Display Current Officer
+            row = filtered_df.iloc[st.session_state.curr_idx]
+            
+            st.divider()
             col1, col2, col3 = st.columns(3)
             with col1:
                 st.metric("Rank", row['Rank'])
@@ -137,43 +155,141 @@ def main():
                 st.metric("Current Role", row['current_appointment'])
                 st.metric("Pool", row['Pool'])
             with col3:
-                st.metric("Entry Type", row['Entry_type'])
-                st.text(f"Appointed Since: {row.get('appointed_since', 'Unknown')}")
+                st.metric("ID", row['Employee_ID'])
+                st.text(f"Entry: {row['Entry_type']}")
                 
-            with st.expander("View History"):
-                st.text_area("Appointment History", row['Appointment_history'], height=100)
-                st.text_area("Training History", row['Training_history'], height=100)
+            # History
+            with st.expander("📜 Career History", expanded=False):
+                st.text_area("History", row['Appointment_history'], height=100, disabled=True)
+
+            # 5. AUTO-PREDICT
+            st.markdown("### 🔮 Predicted Trajectory")
+            try:
+                # Convert Series to DF for predictor
+                input_df = pd.DataFrame([row])
+                results = predictor.predict(input_df, rank_flex_up=rank_flex_up, rank_flex_down=rank_flex_down)
                 
-            # Prediction
-            if st.button("🔮 Predict Next Appointment"):
-                with st.spinner("Analyzing Career Trajectory..."):
-                    try:
-                        results = predictor.predict(record, rank_flex_up=rank_flex_up, rank_flex_down=rank_flex_down)
-                        
-                        st.subheader("Top Recommended Appointments")
-                        st.dataframe(
-                            results.style.format({"Confidence": "{:.1%}"})
-                                   .background_gradient(subset=["Confidence"], cmap="Greens"),
-                            use_container_width=True,
-                            column_config={
-                                "Prediction": st.column_config.TextColumn("Prediction", width="medium"),
-                                "Explanation": st.column_config.TextColumn("Explanation", width="large")
-                            }
-                        )
-                        
-                        best_role = results.iloc[0]['Prediction']
-                        confidence = results.iloc[0]['Confidence']
-                        
-                        if confidence < 0.2:
-                            st.warning("⚠️ Low Confidence Prediction. Manual Review Recommended.")
-                        else:
-                            st.success(f"Top Recommendation: **{best_role}**")
-                            
-                    except Exception as e:
-                        st.error(f"Prediction Error: {e}")
-                        
+                # Check top confidence
+                top_conf = results.iloc[0]['Confidence']
+                
+                # Dynamic Alert
+                if top_conf > 0.4:
+                    st.success(f"Strong Recommendation: **{results.iloc[0]['Prediction']}**")
+                else:
+                    st.warning(f"Weak Signal ({top_conf:.1%}). Model suggests: **{results.iloc[0]['Prediction']}**")
+
+                st.dataframe(
+                    results.style.format({"Confidence": "{:.1%}"})
+                           .background_gradient(subset=["Confidence"], cmap="Greens"),
+                    use_container_width=True,
+                    column_config={
+                        "Prediction": st.column_config.TextColumn("Role", width="medium"),
+                        "Explanation": st.column_config.TextColumn("Reasoning", width="large")
+                    }
+                )
+                
+            except Exception as e:
+                st.error(f"Prediction unavailable: {e}")
+                
         else:
-            st.error("Employee ID not found.")
+            st.warning("No officers match. Adjust filters.")
+
+    # =========================================================================
+    # MODE 4: BRANCH ANALYTICS (DASHBOARD)
+    # =========================================================================
+    elif mode == "Branch Analytics":
+        st.header("📊 Workforce Flow Analytics")
+        import plotly.graph_objects as go
+        
+        # Rich Sankey: Entry -> Rank -> Branch -> Pool
+        
+        # 1. Controls
+        all_branches = sorted(df['Branch'].unique())
+        sel_branches = st.multiselect("Select Branches to Visualize", all_branches, default=all_branches[:3])
+        
+        if not sel_branches:
+            st.warning("Please select at least one branch.")
+        else:
+            sankey_df = df[df['Branch'].isin(sel_branches)]
+            
+            if len(sankey_df) > 1000:
+                st.info(f"Visualizing random sample of 1000 officers from {len(sankey_df)} total to improve performance.")
+                sankey_df = sankey_df.sample(1000)
+                
+            # 2. Aggregations
+            # Flow 1: Entry -> Rank
+            f1 = sankey_df.groupby(['Entry_type', 'Rank']).size().reset_index(name='count')
+            # Flow 2: Rank -> Branch
+            f2 = sankey_df.groupby(['Rank', 'Branch']).size().reset_index(name='count')
+            # Flow 3: Branch -> Pool (Top 10 Pools)
+            top_pools = sankey_df['Pool'].value_counts().head(10).index.tolist()
+            f3 = sankey_df[sankey_df['Pool'].isin(top_pools)].groupby(['Branch', 'Pool']).size().reset_index(name='count')
+            
+            # Nodes
+            labels = []
+            labels.extend(sorted(f1['Entry_type'].unique())) # 0..A
+            entry_end = len(labels)
+            
+            labels.extend(sorted(f1['Rank'].unique())) # A..B
+            rank_end = len(labels)
+            
+            labels.extend(sorted(f2['Branch'].unique())) # B..C
+            branch_end = len(labels)
+            
+            labels.extend(sorted(f3['Pool'].unique())) # C..D
+            
+            label_map = {l: i for i, l in enumerate(labels)}
+            
+            sources = []
+            targets = []
+            values = []
+            colors = []
+            
+            # Link Generation
+            # 1: Entry -> Rank
+            for _, r in f1.iterrows():
+                sources.append(label_map[r['Entry_type']])
+                targets.append(label_map[r['Rank']])
+                values.append(r['count'])
+                colors.append("rgba(31, 119, 180, 0.3)")
+                
+            # 2: Rank -> Branch
+            for _, r in f2.iterrows():
+                src = r['Rank']
+                tgt = r['Branch']
+                if src in label_map and tgt in label_map:
+                    sources.append(label_map[src])
+                    targets.append(label_map[tgt])
+                    values.append(r['count'])
+                    colors.append("rgba(255, 127, 14, 0.3)")
+                    
+            # 3: Branch -> Pool
+            for _, r in f3.iterrows():
+                src = r['Branch']
+                tgt = r['Pool']
+                if src in label_map and tgt in label_map:
+                    sources.append(label_map[src])
+                    targets.append(label_map[tgt])
+                    values.append(r['count'])
+                    colors.append("rgba(44, 160, 44, 0.3)")
+            
+            fig = go.Figure(data=[go.Sankey(
+                node = dict(
+                  pad = 15,
+                  thickness = 20,
+                  line = dict(color = "black", width = 0.5),
+                  label = labels,
+                  color = "lightgray"
+                ),
+                link = dict(
+                  source = sources,
+                  target = targets,
+                  value = values,
+                  color = colors
+              ))])
+              
+            fig.update_layout(title_text="Workforce Flow: Entry -> Rank -> Branch -> Pool", font_size=10, height=600)
+            st.plotly_chart(fig, use_container_width=True)
             
     elif mode == "Simulation":
         st.header("🎮 Career Simulation Playground")

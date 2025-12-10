@@ -38,8 +38,8 @@ The application will open in your browser at `http://localhost:8501`
 AIAppointer/
 ├── src/                    # Core application code
 │   ├── app.py             # Streamlit UI
-│   ├── inference.py       # Prediction engine
-│   ├── model_trainer.py   # Model training
+│   ├── predictor.py       # Hierarchical Prediction Engine
+│   ├── train.py           # Model training script
 │   └── ...
 ├── models/                # Trained models
 ├── data/                  # Dataset files
@@ -73,15 +73,17 @@ python -m pytest tests/
 
 ### Training Model
 ```bash
-python scripts/train_model.py
+python src/train.py
 ```
 
 ## 📊 Model Performance
 
-- **Algorithm**: LightGBM Gradient Boosting
-- **Top-5 Accuracy**: ~19.4%
-- **Inference Speed**: <100ms
-- **Features**: Rank, Branch, Pool, Career History, Training
+- **Algorithm**: Hierarchical LightGBM (Branch/Pool/Rank) + Text Similarity Ranker
+- **Top-1 Accuracy**: 3.7% (Exact Role)
+- **Top-5 Accuracy**: 12.9% (Relevant Candidates)
+- **Trajectory Accuracy**: ~65% (Branch/Rank Prediction)
+- **Inference Speed**: <200ms
+- **Features**: Hierarchical Classification + Historical Sequence similarity
 
 ## 🔒 Security
 

@@ -52,8 +52,12 @@ class FeatureEngineer:
              df['count_science_training'] = df['parsed_training'].apply(lambda x: sum(1 for i in x if 'Science' in i['title'] or 'Physics' in i['title'] or 'Biology' in i['title']))
              df['count_engineering_training'] = df['parsed_training'].apply(lambda x: sum(1 for i in x if 'Engineering' in i['title'] or 'Propulsion' in i['title'] or 'Warp' in i['title']))
              df['count_medical_training'] = df['parsed_training'].apply(lambda x: sum(1 for i in x if 'Medical' in i['title'] or 'Surgery' in i['title']))
-             # Keep binary flags for legacy or explicit checks if needed, but counts are better for trees.
-             df['has_command_training'] = df['count_command_training'].apply(lambda x: 1 if x > 0 else 0)
+             
+             # NEW: Last Training Recency
+             df['days_since_last_training'] = df.apply(self._calculate_days_since_last_training, axis=1)
+             
+             # NEW: Specific recent course flag (keywords)
+             # df['last_training_category'] = ... (captured implicitly by counts if recent)
         else:
              # Fallback
              df['num_training_courses'] = 0
@@ -62,9 +66,37 @@ class FeatureEngineer:
              df['count_science_training'] = 0
              df['count_engineering_training'] = 0
              df['count_medical_training'] = 0
-             df['has_command_training'] = 0
+             df['days_since_last_training'] = 9999
+        
+        # 5. Advanced Role History
+        # Capture the role BEFORE the last one (trajectory)
+        df['penultimate_role_title'] = df['prior_appointments'].apply(
+            lambda x: x[-2]['title'] if x and isinstance(x, list) and len(x) >= 2 else 'None'
+        )
         
         return df
+
+    def _calculate_days_since_last_training(self, row):
+        training = row.get('parsed_training', [])
+        if not training or not isinstance(training, list):
+            return 9999
+            
+        # Sort desc
+        valid_t = [t for t in training if pd.notna(t['start_date'])]
+        if not valid_t: return 9999
+        
+        valid_t.sort(key=lambda x: x['start_date'], reverse=True)
+        last_date = valid_t[0]['start_date']
+        
+        ref_date = pd.Timestamp.now()
+        if 'snapshot_date' in row and pd.notna(row['snapshot_date']):
+             ref_date = row['snapshot_date']
+        elif 'appointed_since' in row:
+             dt = pd.to_datetime(row['appointed_since'], dayfirst=True, errors='coerce')
+             if pd.notna(dt): ref_date = dt
+             
+        return max(0, (ref_date - last_date).days)
+
 
     def _calculate_service_time(self, row):
         history = row['prior_appointments']

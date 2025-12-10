@@ -40,16 +40,23 @@ def generate_constraints(dataset_path, output_dir='models', verbose=True):
         allowed_ranks = list(subset['Rank'].unique())
         allowed_branches = list(subset['Branch'].unique())
         allowed_pools = list(subset['Pool'].unique())
-        
+        allowed_entries = list(subset['Entry_type'].unique())
+
         # Filter out NaNs
         allowed_ranks = [x for x in allowed_ranks if pd.notna(x) and x != 'Unknown']
         allowed_branches = [x for x in allowed_branches if pd.notna(x)]
         allowed_pools = [x for x in allowed_pools if pd.notna(x)]
+        allowed_entries = [x for x in allowed_entries if pd.notna(x)]
+        
+        # LOGIC FIX: If 'Lieutenant' is allowed, allow 'Lieutenant (jg)'
+        if 'Lieutenant' in allowed_ranks and 'Lieutenant (jg)' not in allowed_ranks:
+            allowed_ranks.append('Lieutenant (jg)')
         
         role_constraints[role] = {
             'ranks': allowed_ranks,
             'branches': allowed_branches,
-            'pools': allowed_pools
+            'pools': allowed_pools,
+            'entries': allowed_entries
         }
     
     # Save
