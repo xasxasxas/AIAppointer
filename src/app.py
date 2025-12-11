@@ -371,12 +371,9 @@ def main():
                     st.subheader("🎯 Simulation Results")
                     st.dataframe(
                         results.style.format({"Confidence": "{:.1%}"})
-                               .background_gradient(subset=["Confidence"], cmap="Blues"),
-                        use_container_width=True,
-                        column_config={
-                            "Prediction": st.column_config.TextColumn("Prediction", width="medium"),
-                            "Explanation": st.column_config.TextColumn("Explanation", width="large")
-                        }
+                               .background_gradient(subset=["Confidence"], cmap="Greens", vmin=0, vmax=1.0),
+                        width="stretch",
+                        hide_index=True
                     )
                     
                     best_role = results.iloc[0]['Prediction']
