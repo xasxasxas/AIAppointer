@@ -6,6 +6,7 @@ import os
 from src.data_processor import DataProcessor
 from src.feature_engineering import FeatureEngineer
 from src.features_ltr import LTRFeatureEngineer
+from src.xai import ModelExplainer  # Import XAI
 
 class Predictor:
     def __init__(self, models_dir='models/ltr'):
@@ -23,6 +24,14 @@ class Predictor:
             # Feature Engineer
             self.ltr_fe = LTRFeatureEngineer()
             self.ltr_fe.load(os.path.join(models_dir, 'ltr_fe.pkl'))
+            
+            # Initialize Explainer (Heavy)
+            try:
+                self.xai = ModelExplainer(self.model)
+                print("✓ SHAP Explainer Initialized.")
+            except Exception as e:
+                print(f"⚠️ SHAP Init Failed: {e}")
+                self.xai = None
             
             # Load Transition Stats
             try:
@@ -272,7 +281,8 @@ class Predictor:
             scored_candidates.append({
                 'role': meta_list[i]['Role'],
                 'score': score,
-                '_Feats': feats_list[i]
+                '_Feats': feats_list[i],
+                '_Vector': X_rows[i] # Keep vector for XAI
             })
             
         # Sort desc
@@ -284,9 +294,15 @@ class Predictor:
             prob = item['score']
             role = item['role']
             
-            # Simple explanation logic based on features?
-            # We don't have easy access to Feat names inside the list vector easily here unless mapped
-            # Let's just give generic high score reasons
+            # XAI Calculation (On Demand for Top K)
+            contribs = {}
+            if self.xai:
+                try:
+                    # Create DF for SHAP
+                    row_df = pd.DataFrame([item['_Vector']], columns=self.feature_cols)
+                    contribs, base = self.xai.get_contributions(row_df)
+                except Exception as e:
+                    print(f"XAI Error: {e}")
             
             reason = "High compatibility score."
             if prob > 0.8: reason = "Excellent Fit: Rank, Branch, and Skills match."
@@ -297,7 +313,8 @@ class Predictor:
                 'Prediction': role,
                 'Confidence': prob,
                 'Explanation': reason,
-                '_Feats': item['_Feats']
+                '_Feats': item['_Feats'],
+                '_Contribs': contribs # Attach SHAP values
             })
             
         return pd.DataFrame(results)

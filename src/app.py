@@ -72,7 +72,7 @@ def load_predictor_v2():
     return Predictor()
 
 @st.cache_resource
-def load_explainer_v3(df, titles=None):
+def load_explainer_v4(df, titles=None):
     return Explainer(df, known_titles=titles)
 
 
@@ -101,7 +101,7 @@ def main():
         t_titles = list(predictor.valid_roles) if hasattr(predictor, 'valid_roles') else []
         known_titles = list(set(h_titles + t_titles))
         
-        explainer = load_explainer_v3(df, known_titles)
+        explainer = load_explainer_v4(df, known_titles)
         
     # Navigation
     mode = st.sidebar.radio("Mode", ["Employee Lookup", "Simulation", "Billet Lookup", "Branch Analytics"])
@@ -214,7 +214,11 @@ def main():
                         st.markdown("#### 📊 Why this recommendation?")
                         feats = r_row.get('_Feats', {})
                         if feats:
-                            metrics = explainer.format_feature_explanation(feats, score=top_conf, constraints=predictor.constraints)
+                            
+                            # Extract XAI Contribs
+                            contribs = r_row.get('_Contribs', None)
+                            
+                            metrics = explainer.format_feature_explanation(feats, score=top_conf, constraints=predictor.constraints, contribs=contribs)
                             # Create comparison chart
                             c1, c2, c3, c4, c5 = st.columns(5)
                             
@@ -233,6 +237,13 @@ def main():
                             m_re = metrics.get('Rank & Entry Fit', {'value': '-', 'desc': 'No Data'})
                             c5.metric("Rank & Entry", m_re['value'], help=m_re['desc'])
                             
+                            # Deep Dive XAI
+                            if contribs:
+                                with st.expander("🔍 Deep Dive Analysis (XAI)"):
+                                    st.markdown("This chart shows exactly how each feature pushed the score up (Green) or down (Red).")
+                                    fig = explainer.create_shap_waterfall(contribs)
+                                    st.plotly_chart(fig, use_container_width=True, key=f"xai_chart_{int(top_conf*100)}_{role_name}")
+
                         # 2. Historical Precedents
                         st.markdown("#### 📜 Historical Precedents")
                         
@@ -501,7 +512,11 @@ def main():
                                 st.markdown("#### 📊 Why this recommendation?")
                                 feats = row.get('_Feats', {})
                                 if feats:
-                                    metrics = explainer.format_feature_explanation(feats, score=score, constraints=predictor.constraints)
+                                    
+                                    # Extract XAI Contribs
+                                    contribs = row.get('_Contribs', None)
+                                    
+                                    metrics = explainer.format_feature_explanation(feats, score=score, constraints=predictor.constraints, contribs=contribs)
                                     # Create comparison chart
                                     c1, c2, c3, c4, c5 = st.columns(5)
                                     
@@ -519,6 +534,14 @@ def main():
                                     
                                     m_re = metrics.get('Rank & Entry Fit', {'value': '-', 'desc': 'No Data'})
                                     c5.metric("Rank & Entry", m_re['value'], help=m_re['desc'])
+                                    
+                                    # Deep Dive XAI
+                                    if contribs:
+                                        with st.expander("🔍 Deep Dive Analysis (XAI)"):
+                                            st.markdown("This chart shows exactly how each feature pushed the score up (Green) or down (Red).")
+                                            fig = explainer.create_shap_waterfall(contribs)
+                                            # Ensure unique key for each row in the list
+                                            st.plotly_chart(fig, use_container_width=True, key=f"xai_billet_{idx}_{row['Employee_ID']}")
                                 
                                 # 2. Historical Precedents
                                 st.markdown("#### 📜 Historical Precedents")
@@ -529,13 +552,16 @@ def main():
                                 
                                 # Semantic fallback if needed
                                 if not curr_clean:
-                                    emp_id = row['Employee_ID']
-                                    cand_record = df[df['Employee_ID'] == emp_id]
-                                    if not cand_record.empty:
-                                         hist = cand_record.iloc[0]['Appointment_history']
-                                         if isinstance(hist, str):
-                                            curr = hist.split(',')[0]
-                                            curr_clean = re.sub(r'\s*\(.*?\)', '', curr).strip()
+                                    raw = row.get('Appointment_history', '')
+                                    if raw:
+                                        import re
+                                        parts = raw.split('>')
+                                        if parts:
+                                            # last part
+                                            curr_clean = parts[-1].strip()
+                                        else:
+                                            # try regex on Appointment history
+                                            pass
                                 
                                 if curr_clean:
                                     precedents = explainer.get_precedents(curr_clean, target_role)

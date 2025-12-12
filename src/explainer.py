@@ -1,6 +1,7 @@
 import pandas as pd
 import re
 import difflib
+import plotly.graph_objects as go
 
 class Explainer:
     def __init__(self, df=None, known_titles=None):
@@ -134,7 +135,7 @@ class Explainer:
             
         return matches[:limit]
 
-    def format_feature_explanation(self, feats, score=0.0, constraints=None):
+    def format_feature_explanation(self, feats, score=0.0, constraints=None, contribs=None):
         """
         Converts raw feature dict into rich human-readable explanation objects.
         Merges related metrics to save space and provide clearer context.
@@ -154,30 +155,60 @@ class Explainer:
         
         # 0. AI Probability Score (NEW)
         # Dynamic Driver Analysis
-        drivers = []
-        if feats.get('prior_title_prob', 0) > 0.05:
-            drivers.append(f"**Strong History Signal ({feats['prior_title_prob']:.1%})**")
-        if feats.get('rank_match_exact', 0):
-            drivers.append("**Rank Eligibility**")
-        if feats.get('branch_match', 0):
-            drivers.append("**Branch Fit**")
-        
-        driver_text = ", ".join(drivers) if drivers else "**Baseline Structural Fit**"
-        
-        # Determine Status for text
-        rank_status = 'Met' if feats.get('rank_match_exact') else 'Miss'
-        branch_status = 'Met' if feats.get('branch_match') else 'Miss'
-        
-        ex['AI Score'] = {
-            'value': f"{score:.1%}",
-            # FIX: Use f-string to evaluate variables
-            'desc': (
+        if contribs:
+            # XAI-Based Description
+            # Contribs is approx {feature: value}
+            # Identify top 3 positive and top 1 negative
+            pos = {k:v for k,v in contribs.items() if v > 0}
+            neg = {k:v for k,v in contribs.items() if v < 0}
+            
+            top_pos = sorted(pos.items(), key=lambda x: x[1], reverse=True)[:3]
+            top_neg = sorted(neg.items(), key=lambda x: x[1])[:1]
+            
+            driver_lines = []
+            for k, v in top_pos:
+                # Clean feature name
+                name = k.replace('_', ' ').title()
+                driver_lines.append(f"+ **{name}** (+{v:.2f})")
+            
+            for k, v in top_neg:
+                name = k.replace('_', ' ').title()
+                driver_lines.append(f"- **{name}** ({v:.2f})")
+                
+            driver_text = "\n".join(driver_lines)
+            
+            desc = (
+                f"**Score Drivers (Calculated)**:\n{driver_text}\n\n"
+                "This score is mathematically derived from the sum of these feature contributions.\n"
+                "See 'Deep Dive Analysis' below for the full calculation."
+            )
+        else:
+            # Heuristic Fallback
+            drivers = []
+            if feats.get('prior_title_prob', 0) > 0.05:
+                drivers.append(f"**Strong History Signal ({feats['prior_title_prob']:.1%})**")
+            if feats.get('rank_match_exact', 0):
+                drivers.append("**Rank Eligibility**")
+            if feats.get('branch_match', 0):
+                drivers.append("**Branch Fit**")
+            
+            driver_text = ", ".join(drivers) if drivers else "**Baseline Structural Fit**"
+            
+            # Determine Status for text
+            rank_status = 'Met' if feats.get('rank_match_exact') else 'Miss'
+            branch_status = 'Met' if feats.get('branch_match') else 'Miss'
+            
+            desc = (
                 f"**Score Drivers**: {driver_text}\n\n"
                 f"The AI calculates this probability by comparing this candidate's profile against:\n"
                 f"1.  **Past Patterns**: How often officers moved from '{t_from}' to '{t_to}'.\n"
                 f"2.  **Hard Constraints**: Rank ({rank_status}) and Branch ({branch_status}).\n"
                 f"3.  **Training Overlap**: Shared skills with previous incumbents."
             )
+        
+        ex['AI Score'] = {
+            'value': f"{score:.1%}",
+            'desc': desc
         }
         
         # 1. Historical Precedent
@@ -296,3 +327,41 @@ class Explainer:
                 }
             
         return ex
+
+    def create_shap_waterfall(self, contribs, base_value=0.5):
+        """
+        Creates a Plotly Waterfall chart from SHAP contributions.
+        """
+        # Prepare Data
+        # Sort by magnitude descending, take top 8
+        sorted_items = sorted(contribs.items(), key=lambda x: abs(x[1]), reverse=True)
+        top_k = sorted_items[:8]
+        
+        # Rest grouping?
+        remainder = sum([v for k,v in sorted_items[8:]])
+        
+        names = [k.replace('_', ' ').title() for k, v in top_k]
+        values = [v for k, v in top_k]
+        
+        if abs(remainder) > 0.001:
+            names.append("Other Features")
+            values.append(remainder)
+            
+        fig = go.Figure(go.Waterfall(
+            name = "Prediction",
+            orientation = "v",
+            measure = ["relative"] * len(values) + ["total"],
+            x = names + ["Final Score"],
+            textposition = "outside",
+            text = [f"{v:+.2f}" for v in values] + ["Total"],
+            y = values + [0], # The last 0 is dummy, 'total' computes it.
+            connector = {"line":{"color":"rgb(63, 63, 63)"}},
+        ))
+        
+        fig.update_layout(
+             title = "Feature Contribution to AI Decision",
+             showlegend = False,
+             height=400,
+             margin=dict(l=20, r=20, t=40, b=20)
+        )
+        return fig
