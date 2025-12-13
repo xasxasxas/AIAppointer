@@ -16,6 +16,35 @@ class ModelExplainer:
         # TreeExplainer is optimized for fast calculation on tree models
         self.explainer = shap.TreeExplainer(model)
         
+    def get_explanation_object(self, feature_df):
+        """
+        Returns a shap.Explanation object for the given features.
+        Required for shap.plots.beeswarm/bar/force.
+        """
+        # SHAP calculation
+        shap_values = self.explainer.shap_values(feature_df)
+        
+        # Handle Binary/Ranker Output
+        vals = shap_values
+        if isinstance(vals, list):
+            vals = vals[1] # Positive class
+            
+        # Create Explanation Object
+        # shap.Explanation(values, base_values, data, feature_names)
+        # Note: explainer.expected_value might be list too
+        base = self.explainer.expected_value
+        if isinstance(base, list) or isinstance(base, np.ndarray):
+             if len(base) > 1: base = base[1]
+             else: base = base[0]
+             
+        explanation = shap.Explanation(
+            values=vals,
+            base_values=base,
+            data=feature_df.values,
+            feature_names=feature_df.columns
+        )
+        return explanation
+
     def get_contributions(self, feature_row):
         """
         Calculates feature contributions (SHAP values) for a single prediction row.

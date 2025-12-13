@@ -139,3 +139,20 @@ class LTRFeatureEngineer:
         
     def load(self, path):
         self.tfidf = joblib.load(path)
+
+    def transform(self, pairs_df, transition_stats=None):
+        """
+        Batch transform a DataFrame of items into features.
+        Used for Global SHAP context generation.
+        Assumes each row contains both Officer attributes and Target Role attributes (merged).
+        """
+        features_list = []
+        for idx, row in pairs_df.iterrows():
+            # In Global Context loading, 'row' is a merged dict of User + Target Role Metadata
+            officer_row = row.to_dict()
+            candidate_row = row.to_dict() # Same row carries the target info
+            
+            feats = self.generate_pair_features(officer_row, candidate_row, transition_stats=transition_stats)
+            features_list.append(feats)
+            
+        return pd.DataFrame(features_list)

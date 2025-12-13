@@ -328,40 +328,177 @@ class Explainer:
             
         return ex
 
-    def create_shap_waterfall(self, contribs, base_value=0.5):
+    def _generate_dynamic_tooltip(self, name, shap_val, feat_val):
+        """
+        Generates a context-aware explanation string based on the feature value and its impact.
+        """
+        # Formatter helpers
+        is_pos = shap_val > 0
+        impact = "Boosts Score" if is_pos else "Polishes Score" if abs(shap_val) < 0.1 else "Reduces Score"
+        
+        # Specific Logic
+        if name == 'rank_match_exact':
+            status = "Matches" if feat_val == 1 else "Mismatch"
+            return f"<b>Rank Alignment: {status}</b><br>Value: {feat_val}<br>Impact: {shap_val:+.2f}<br><br>Because the rank {status.lower()} the requirement, this {impact.lower()}."
+            
+        elif name == 'branch_match':
+            status = "Matches" if feat_val == 1 else "Mismatch"
+            return f"<b>Branch Alignment: {status}</b><br>Value: {feat_val}<br>Impact: {shap_val:+.2f}<br><br>Candidate {status.lower()} the target branch."
+            
+        elif name == 'prior_title_prob':
+            if feat_val == 0:
+                return f"<b>History Pattern: None</b><br>Value: 0%<br>Impact: {shap_val:+.2f}<br><br>We have never seen a direct transition from the candidate's current role to this target in the dataset. This lack of precedent penalizes the score."
+            return f"<b>History Pattern: {feat_val:.1%}</b><br>Impact: {shap_val:+.2f}<br><br>This transition happens {feat_val:.1%} of the time historically, providing a strong signal."
+            
+        elif name == 'years_service':
+            return f"<b>Tenure: {feat_val} Years</b><br>Impact: {shap_val:+.2f}<br><br>Candidate's total service length."
+            
+        elif name == 'title_similarity':
+            return f"<b>Keyword Match: {feat_val:.2f}</b><br>Impact: {shap_val:+.2f}<br><br>Similarity between current title and target title (0-1). Higher overlap suggests functional relevance."
+         
+        # Default fallback
+        return f"<b>{name.replace('_', ' ').title()}</b><br>Value: {feat_val}<br>Impact: {shap_val:+.2f}"
+
+    def create_shap_waterfall(self, contribs, base_value=0.0, feats=None):
         """
         Creates a Plotly Waterfall chart from SHAP contributions.
+        Supports Base Value display and rich Tooltips.
         """
+        # Dictionary Map for Readable Labels (Static Fallback)
+        FEATURE_MAP = {
+            'rank_diff': 'Rank Proximity',
+            'branch_match': 'Branch Match',
+            'pool_match': 'Pool Match',
+            'years_in_current_rank': 'Time in Rank',
+            'num_prior_roles': 'Career Depth',
+            'history_word_overlap': 'Title Match',
+            'title_similarity': 'Title Similarity',
+            'training_match': 'Training Fit',
+            'prior_title_prob': 'History Pattern',
+            'is_same_branch': 'Strict Branch',
+            'rank_match_exact': 'Rank Eligibility',
+            'years_service': 'Total Service'
+        }
+
         # Prepare Data
         # Sort by magnitude descending, take top 8
         sorted_items = sorted(contribs.items(), key=lambda x: abs(x[1]), reverse=True)
         top_k = sorted_items[:8]
         
-        # Rest grouping?
+        # Rest grouping
         remainder = sum([v for k,v in sorted_items[8:]])
         
-        names = [k.replace('_', ' ').title() for k, v in top_k]
-        values = [v for k, v in top_k]
+        names = []
+        hover_texts = []
+        values = []
         
+        # 0. Add Base Value (Start)
+        names.append("Baseline")
+        values.append(base_value)
+        hover_texts.append(f"<b>Base Score: {base_value:.2f}</b><br>The starting assumption (average fit) before looking at specific candidate details.")
+        
+        # Features
+        for k, v in top_k:
+            # Get Readable Name
+            label = FEATURE_MAP.get(k, k.replace('_', ' ').title())
+            names.append(label)
+            
+            # Get Value for Tooltip
+            f_val = feats.get(k, 'N/A') if feats else 'N/A'
+            
+            # Generate Rich Tooltip
+            tt = self._generate_dynamic_tooltip(k, v, f_val)
+            hover_texts.append(tt)
+            
+            values.append(v)
+            
+        # Remainder
         if abs(remainder) > 0.001:
             names.append("Other Features")
             values.append(remainder)
+            hover_texts.append("Sum of all other small feature contributions.")
             
+        # Calculate Final for Label
+        final_score = sum(values)
+
+        # Plot
         fig = go.Figure(go.Waterfall(
             name = "Prediction",
             orientation = "v",
-            measure = ["relative"] * len(values) + ["total"],
-            x = names + ["Final Score"],
+            measure = ["absolute"] + ["relative"] * (len(values)-1) + ["total"],
+            x = names + ["Raw Score"],
             textposition = "outside",
-            text = [f"{v:+.2f}" for v in values] + ["Total"],
-            y = values + [0], # The last 0 is dummy, 'total' computes it.
+            # Fix: Show numeric total instead of 'Total' text
+            text = [f"{v:+.2f}" for v in values] + [f"{final_score:.2f}"],
+            y = values + [0], # Dummy for total
+            hovertext = hover_texts + [f"<b>Final Raw Link Score: {final_score:.2f}</b>"],
+            hoverinfo = "text+name", 
             connector = {"line":{"color":"rgb(63, 63, 63)"}},
         ))
         
         fig.update_layout(
-             title = "Feature Contribution to AI Decision",
+             title = dict(text=f"Decision Path (Final Raw Score: {final_score:.2f})", font=dict(size=14)),
              showlegend = False,
-             height=400,
-             margin=dict(l=20, r=20, t=40, b=20)
+             height=450,
+             margin=dict(l=20, r=20, t=50, b=20)
         )
         return fig
+
+    def create_global_beeswarm_plot(self, shap_explanation):
+        """
+        Renders a SHAP Beeswarm plot using Matplotlib.
+        Returns the Figure object.
+        """
+        import shap
+        import matplotlib.pyplot as plt
+        
+        # Create figure
+        fig, ax = plt.subplots(figsize=(10, 6))
+        
+        # Plot beeswarm
+        # max_display=12 to show top features
+        shap.plots.beeswarm(shap_explanation, max_display=12, show=False)
+        
+        # Adjust layout
+        plt.tight_layout()
+        
+        # Return figure
+        return fig
+
+    def create_global_bar_plot(self, shap_explanation):
+        """
+        Renders a SHAP Bar plot (Global Feature Importance).
+        """
+        import shap
+        import matplotlib.pyplot as plt
+        
+        fig, ax = plt.subplots(figsize=(10, 6))
+        
+        shap.plots.bar(shap_explanation, max_display=12, show=False)
+        plt.tight_layout()
+        return fig
+
+    def create_force_plot_html(self, base_value, shap_values, features):
+        """
+        Generates the HTML for a SHAP Force Plot (JavaScript).
+        Use st.components.v1.html to render.
+        Note: Force plot expects single prediction data.
+        """
+        import shap
+        
+        # shap.force_plot returns HTML string if matplotlib=False (default)
+        # We need to call shap.initjs() in the app, or inject it.
+        # However, force_plot return is complex (Visualizer object).
+        # We use .html() method.
+        
+        try:
+             plot = shap.force_plot(
+                 base_value, 
+                 shap_values, 
+                 features, 
+                 matplotlib=False
+             )
+             return f"<head>{shap.getjs()}</head><body>{plot.html()}</body>"
+        except Exception as e:
+             return f"<div>Error generating force plot: {e}</div>"
+

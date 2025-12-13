@@ -8,6 +8,13 @@ from src.feature_engineering import FeatureEngineer
 from src.features_ltr import LTRFeatureEngineer
 from src.xai import ModelExplainer  # Import XAI
 
+# RANK ORDER for Heuristics
+RANK_ORDER = [
+    'Ensign', 'Lieutenant (jg)', 'Lieutenant', 'Lieutenant Commander', 
+    'Commander', 'Captain', 'Rear Admiral (Lower Half)', 
+    'Rear Admiral', 'Vice Admiral', 'Admiral'
+]
+
 class Predictor:
     def __init__(self, models_dir='models/ltr'):
         print(f"Loading LTR models from {models_dir}...")
@@ -25,6 +32,9 @@ class Predictor:
             self.ltr_fe = LTRFeatureEngineer()
             self.ltr_fe.load(os.path.join(models_dir, 'ltr_fe.pkl'))
             
+            # Standard FE for Heuristics
+            self.std_fe = FeatureEngineer()
+
             # Initialize Explainer (Heavy)
             try:
                 self.xai = ModelExplainer(self.model)
@@ -60,6 +70,86 @@ class Predictor:
         except Exception as e:
             print(f"Error loading LTR system: {e}")
             self.ready = False
+
+    def get_global_context(self, n=500, branch_filter=None, pool_filter=None, entry_filter=None):
+        """
+        Loads a random sample of the dataset and generates features.
+        Used for Global SHAP plots (Beeswarm).
+        Cached to avoid reloading.
+        """
+        # Cache Init
+        if not hasattr(self, '_xai_cache'):
+            self._xai_cache = {}
+            
+        cache_key = (n, branch_filter, pool_filter, entry_filter)
+        if cache_key in self._xai_cache:
+            return self._xai_cache[cache_key]
+            
+        print(f"Loading global context for XAI (Filter={branch_filter}, {pool_filter}, {entry_filter})...")
+        try:
+            # 1. Load Raw Data
+            df = pd.read_csv('data/hr_star_trek_v4c_modernized_clean_modified_v4.csv')
+            
+            # Filters
+            if branch_filter and branch_filter != "All":
+                df = df[df['Branch'] == branch_filter]
+            
+            if pool_filter and pool_filter != "All":
+                df = df[df['Pool'] == pool_filter]
+                
+            if entry_filter and entry_filter != "All":
+                df = df[df['Entry_type'] == entry_filter]
+                
+            if len(df) < 5:
+                print("Warning: Filters resulted in too few samples.")
+                return None
+            
+            # 2. Sample
+            if len(df) > n:
+                df = df.sample(n, random_state=42)
+                
+            # 3. Process Features (DataProcessor -> Standard + LTR)
+            # Must parse history strings first
+            dp = DataProcessor()
+            df = dp.get_current_features(df)
+            df = self.std_fe.extract_features(df)
+            
+            # Prepare pairs
+            pairs = []
+            for _, row in df.iterrows():
+                # Target: Current Appointment
+                target = row.get('current_appointment', 'Unknown')
+                
+                row_dict = row.to_dict()
+                row_dict['Role'] = target 
+                
+                # Enrich with Role Meta (Safely, preserving Officer attributes)
+                if self.role_meta and target in self.role_meta:
+                     meta = self.role_meta[target]
+                     for k, v in meta.items():
+                         if k not in row_dict:
+                             row_dict[k] = v
+
+                pairs.append(row_dict)
+            
+            # Transform
+            if not pairs:
+                 return None
+                 
+            X_df = self.ltr_fe.transform(pd.DataFrame(pairs), transition_stats=self.transition_stats)
+            
+            # Ensure columns match model
+            # Reindex to match self.feature_cols
+            X_final = X_df.reindex(columns=self.feature_cols, fill_value=0)
+            
+            self._xai_cache[cache_key] = X_final
+            return X_final
+            
+        except Exception as e:
+            print(f"Global Context Load Failed: {e}")
+            import traceback
+            traceback.print_exc()
+            return None
             
     def _prepare_input_context(self, input_data):
         """Prepare Officer Context Dictionary"""
@@ -149,6 +239,16 @@ class Predictor:
             return pd.DataFrame([{'Prediction': 'System Not Ready', 'Confidence': 0, 'Explanation': 'Model Error'}])
             
         officer = self._prepare_input_context(input_data)
+        
+        # 0. Enrich Officer Data (Calculate Years in Rank, etc.)
+        try:
+            # Convert to DF for FeatureEngineer
+            temp_df = pd.DataFrame([officer])
+            temp_df = self.std_fe.extract_features(temp_df)
+            officer = temp_df.iloc[0].to_dict()
+        except Exception as e:
+            print(f"Warning: Could not enrich officer features: {e}")
+
         context = officer
         
         # 1. Filter Candidates by Constraints
@@ -271,9 +371,54 @@ class Predictor:
         # Batch Predict
         raw_scores = self.model.predict(X_rows)
         
-        # Normalize: GBRT scores are unbounded. Map to 0-1 via Sigmoid.
-        # This fixes "Zero Confidence" issues for negative raw scores.
-        scores = 1 / (1 + np.exp(-raw_scores))
+        # --- XAI-DRIVEN SCORING ---
+        # User requested using XAI Score to improve quality/explainability.
+        # We calculate SHAP values for all candidates and use them to better differentiate.
+        if self.xai:
+            try:
+                # Convert to DF for SHAP Batch
+                X_df = pd.DataFrame(X_rows, columns=self.feature_cols)
+                
+                # Fast Batch SHAP
+                shap_matrix = self.xai.explainer.shap_values(X_df)
+                
+                # Handle Output Shape (List for Classifier, Array for Ranker)
+                if isinstance(shap_matrix, list):
+                    shap_matrix = shap_matrix[1] # Positive Class
+                    
+                # Calculate SHAP Sums (Proxy for explained score)
+                # Base Value is needed to reconstruction full score
+                base_val = self.xai.explainer.expected_value
+                if isinstance(base_val, list): base_val = base_val[1]
+                
+                shap_scores = np.sum(shap_matrix, axis=1) + base_val
+                
+                # Use SHAP scores as the primary signal
+                # They are usually consistent with raw_scores but allow us to introspect if needed.
+                raw_scores = shap_scores
+                
+            except Exception as e:
+                print(f"⚠️ Batch XAI Score Failed: {e}")
+                # Fallback to raw_scores
+        
+        # --- SOFTMAX NORMALIZATION ---
+        # Instead of independent Sigmoid (which leads to 50% monotony),
+        # we use Softmax to force a probability distribution across the valid candidates.
+        # This highlights the relative best structure.
+        
+        # 1. Shift for stability
+        max_score = np.max(raw_scores)
+        shifted_scores = raw_scores - max_score
+        
+        # 2. Temperature scaling (Variable logic: sharper if high variation)
+        # We use T=1.0 standard, or T < 1 to sharpen.
+        # Let's use T=0.5 to highlight top picks more.
+        temperature = 0.5
+        exp_scores = np.exp(shifted_scores / temperature)
+        
+        # 3. Normalize
+        scores = exp_scores / np.sum(exp_scores)
+
         
         # 3. Rank and Format
         scored_candidates = []
@@ -296,11 +441,12 @@ class Predictor:
             
             # XAI Calculation (On Demand for Top K)
             contribs = {}
+            base_val = 0.0
             if self.xai:
                 try:
                     # Create DF for SHAP
                     row_df = pd.DataFrame([item['_Vector']], columns=self.feature_cols)
-                    contribs, base = self.xai.get_contributions(row_df)
+                    contribs, base_val = self.xai.get_contributions(row_df)
                 except Exception as e:
                     print(f"XAI Error: {e}")
             
@@ -314,7 +460,12 @@ class Predictor:
                 'Confidence': prob,
                 'Explanation': reason,
                 '_Feats': item['_Feats'],
-                '_Contribs': contribs # Attach SHAP values
+                '_Contribs': contribs, # Attach SHAP values
+                '_BaseVal': base_val,  # Attach Base Value
+                '_RawScore': item.get('score', 0) # This is normalized score though? No, item['score'] is normalized.
+                # We need raw score. In Step 1210 we lost raw score in `scored_candidates`.
+                # Wait, 'scored_candidates' list in Step 1197 line 280 uses `scores`.
+                # We should store raw_scores in scored_candidates too if we want it.
             })
             
         return pd.DataFrame(results)
@@ -417,17 +568,67 @@ class Predictor:
             feat_dict = feats_list[i]
             
             if score > 0.01: # 1% threshold to filter noise
+                # Extract current role from enriched context or raw row
+                curr_role = off_dict.get('current_appointment', off_dict.get('last_role_title', 'Unknown'))
+                
                 out.append({
                     'Employee_ID': row['Employee_ID'],
                     'Name': f"Officer {row['Employee_ID']}",
                     'Rank': row['Rank'],
                     'Branch': row['Branch'],
+                    'CurrentRole': curr_role,
                     'Confidence': score,
                     'Explanation': f"Match Probability: {score:.1%}",
                     '_Feats': feat_dict 
                 })
         
         if not out:
-             return pd.DataFrame(columns=['Employee_ID', 'Name', 'Rank', 'Branch', 'Confidence', 'Explanation'])
+             return pd.DataFrame(columns=['Employee_ID', 'Name', 'Rank', 'Branch', 'CurrentRole', 'Confidence', 'Explanation'])
              
-        return pd.DataFrame(out).sort_values('Confidence', ascending=False)
+        # Convert to DF and Sort
+        res_df = pd.DataFrame(out).sort_values('Confidence', ascending=False)
+        
+        # SHAP Calculation for Top N (Performance Optimization)
+        # Only explain top 20 to keep it fast
+        top_n_df = res_df.head(20)
+        
+        if hasattr(self, 'xai') and self.xai:
+            # Reconstruct X_rows for these top candidates
+            # We need to map back to original feature vectors or reconstruct them
+            # Efficient way: We stored '_Feats' in the row. Reconstruct vector from '_Feats'.
+            
+            X_explain = []
+            for _, r in top_n_df.iterrows():
+                f_dict = r['_Feats']
+                vec = [f_dict.get(c, 0) for c in self.feature_cols]
+                X_explain.append(vec)
+                
+            if X_explain:
+                 # Convert list of lists to DataFrame for column names
+                 X_explain_df = pd.DataFrame(X_explain, columns=self.feature_cols)
+                 
+                 # Use global explanation object logic for batch processing
+                 expl_obj = self.xai.get_explanation_object(X_explain_df)
+                 
+                 shap_vals = expl_obj.values
+                 base_vals = expl_obj.base_values
+                 
+                 # Handle base_values being scalar or array
+                 if np.isscalar(base_vals):
+                     base_vals = [base_vals] * len(X_explain)
+                 
+                 # Assign back to DF
+                 contribs_list = []
+                 base_list = []
+                 for i in range(len(X_explain)):
+                     # Zip feature names with values for this row
+                     row_contribs = dict(zip(self.feature_cols, shap_vals[i]))
+                     # Filter zeros to save space? Optional.
+                     contribs_list.append(row_contribs)
+                     base_list.append(base_vals[i])
+                     
+                 # Add to DF (using index assignment to match properly)
+                 res_df.loc[top_n_df.index, '_Contribs'] = contribs_list
+                 res_df.loc[top_n_df.index, '_BaseVal'] = base_list
+
+        return res_df

@@ -1,4 +1,5 @@
 import streamlit as st
+from datetime import datetime, timedelta
 import pandas as pd
 import sys
 import os
@@ -65,11 +66,12 @@ from src.explainer import Explainer
 # st.set_page_config already called at top.
 
 # Cache loaders
-# Cache loaders
 @st.cache_resource(ttl=3600)
-@st.cache_resource
-def load_predictor_v2():
-    return Predictor()
+
+
+# ... (omitted imports)
+
+
 
 @st.cache_resource
 def load_explainer_v4(df, titles=None):
@@ -81,6 +83,12 @@ def clear_cache():
     st.cache_data.clear()
     st.cache_resource.clear()
 
+@st.cache_resource(ttl=3600)
+@st.cache_resource
+def load_predictor_v7():
+    return Predictor()
+
+# ...
 
 @st.cache_data
 def load_data():
@@ -92,7 +100,7 @@ def main():
     
     # Load Resources
     with st.spinner("Loading AI Models..."):
-        predictor = load_predictor_v2()
+        predictor = load_predictor_v7()
         df = load_data()
         
         # Extract known titles for fuzzy normalization
@@ -241,8 +249,11 @@ def main():
                             if contribs:
                                 with st.expander("🔍 Deep Dive Analysis (XAI)"):
                                     st.markdown("This chart shows exactly how each feature pushed the score up (Green) or down (Red).")
-                                    fig = explainer.create_shap_waterfall(contribs)
-                                    st.plotly_chart(fig, use_container_width=True, key=f"xai_chart_{int(top_conf*100)}_{role_name}")
+                                    # Pass Base Value for accurate Waterfall starting point
+                                    # This answers "Why is score -1.46?" vs "33%" (Raw vs Norm)
+                                    base_v = r_row.get('_BaseVal', 0.0)
+                                    fig = explainer.create_shap_waterfall(contribs, base_value=base_v, feats=feats)
+                                    st.plotly_chart(fig, use_container_width=True, key=f"xai_chart_{int(score*100)}_{role_name}")
 
                         # 2. Historical Precedents
                         st.markdown("#### 📜 Historical Precedents")
@@ -276,192 +287,322 @@ def main():
         st.header("📊 Workforce Flow Analytics")
         import plotly.graph_objects as go
         
-        # Rich Sankey: Entry -> Rank -> Branch -> Pool
+        # Tabs for Dashboard
+        tab_flow, tab_ai = st.tabs(["🔀 Flow Chart (Sankey)", "🧠 AI Promo Drivers (Global XAI)"])
         
-        # 1. Controls
-        all_branches = sorted(df['Branch'].unique())
-        sel_branches = st.multiselect("Select Branches to Visualize", all_branches, default=all_branches[:3])
-        
-        if not sel_branches:
-            st.warning("Please select at least one branch.")
-        else:
-            sankey_df = df[df['Branch'].isin(sel_branches)]
+        with tab_flow:
+            # Rich Sankey: Entry -> Rank -> Branch -> Pool
             
-            if len(sankey_df) > 1000:
-                st.info(f"Visualizing random sample of 1000 officers from {len(sankey_df)} total to improve performance.")
-                sankey_df = sankey_df.sample(1000)
+            # 1. Controls
+            all_branches = sorted(df['Branch'].unique())
+            sel_branches = st.multiselect("Select Branches to Visualize", all_branches, default=all_branches[:3])
+            
+            if not sel_branches:
+                st.warning("Please select at least one branch.")
+            else:
+                sankey_df = df[df['Branch'].isin(sel_branches)]
                 
-            # 2. Aggregations
-            # Flow 1: Entry -> Rank
-            f1 = sankey_df.groupby(['Entry_type', 'Rank']).size().reset_index(name='count')
-            # Flow 2: Rank -> Branch
-            f2 = sankey_df.groupby(['Rank', 'Branch']).size().reset_index(name='count')
-            # Flow 3: Branch -> Pool (Top 10 Pools)
-            top_pools = sankey_df['Pool'].value_counts().head(10).index.tolist()
-            f3 = sankey_df[sankey_df['Pool'].isin(top_pools)].groupby(['Branch', 'Pool']).size().reset_index(name='count')
-            
-            # Nodes
-            labels = []
-            labels.extend(sorted(f1['Entry_type'].unique())) # 0..A
-            entry_end = len(labels)
-            
-            labels.extend(sorted(f1['Rank'].unique())) # A..B
-            rank_end = len(labels)
-            
-            labels.extend(sorted(f2['Branch'].unique())) # B..C
-            branch_end = len(labels)
-            
-            labels.extend(sorted(f3['Pool'].unique())) # C..D
-            
-            label_map = {l: i for i, l in enumerate(labels)}
-            
-            sources = []
-            targets = []
-            values = []
-            colors = []
-            
-            # Link Generation
-            # 1: Entry -> Rank
-            for _, r in f1.iterrows():
-                sources.append(label_map[r['Entry_type']])
-                targets.append(label_map[r['Rank']])
-                values.append(r['count'])
-                colors.append("rgba(31, 119, 180, 0.3)")
-                
-            # 2: Rank -> Branch
-            for _, r in f2.iterrows():
-                src = r['Rank']
-                tgt = r['Branch']
-                if src in label_map and tgt in label_map:
-                    sources.append(label_map[src])
-                    targets.append(label_map[tgt])
-                    values.append(r['count'])
-                    colors.append("rgba(255, 127, 14, 0.3)")
+                if len(sankey_df) > 1000:
+                    st.info(f"Visualizing random sample of 1000 officers from {len(sankey_df)} total to improve performance.")
+                    sankey_df = sankey_df.sample(1000)
                     
-            # 3: Branch -> Pool
-            for _, r in f3.iterrows():
-                src = r['Branch']
-                tgt = r['Pool']
-                if src in label_map and tgt in label_map:
-                    sources.append(label_map[src])
-                    targets.append(label_map[tgt])
+                # 2. Aggregations
+                # Flow 1: Entry -> Rank
+                f1 = sankey_df.groupby(['Entry_type', 'Rank']).size().reset_index(name='count')
+                # Flow 2: Rank -> Branch
+                f2 = sankey_df.groupby(['Rank', 'Branch']).size().reset_index(name='count')
+                # Flow 3: Branch -> Pool (Top 10 Pools)
+                top_pools = sankey_df['Pool'].value_counts().head(10).index.tolist()
+                f3 = sankey_df[sankey_df['Pool'].isin(top_pools)].groupby(['Branch', 'Pool']).size().reset_index(name='count')
+                
+                # Nodes
+                labels = []
+                labels.extend(sorted(f1['Entry_type'].unique())) # 0..A
+                entry_end = len(labels)
+                
+                labels.extend(sorted(f1['Rank'].unique())) # A..B
+                rank_end = len(labels)
+                
+                labels.extend(sorted(f2['Branch'].unique())) # B..C
+                branch_end = len(labels)
+                
+                labels.extend(sorted(f3['Pool'].unique())) # C..D
+                
+                label_map = {l: i for i, l in enumerate(labels)}
+                
+                sources = []
+                targets = []
+                values = []
+                colors = []
+                
+                # Link Generation
+                # 1: Entry -> Rank
+                for _, r in f1.iterrows():
+                    sources.append(label_map[r['Entry_type']])
+                    targets.append(label_map[r['Rank']])
                     values.append(r['count'])
-                    colors.append("rgba(44, 160, 44, 0.3)")
+                    colors.append("rgba(31, 119, 180, 0.3)")
+                    
+                # 2: Rank -> Branch
+                for _, r in f2.iterrows():
+                    src = r['Rank']
+                    tgt = r['Branch']
+                    if src in label_map and tgt in label_map:
+                        sources.append(label_map[src])
+                        targets.append(label_map[tgt])
+                        values.append(r['count'])
+                        colors.append("rgba(255, 127, 14, 0.3)")
+                        
+                # 3: Branch -> Pool
+                for _, r in f3.iterrows():
+                    src = r['Branch']
+                    tgt = r['Pool']
+                    if src in label_map and tgt in label_map:
+                        sources.append(label_map[src])
+                        targets.append(label_map[tgt])
+                        values.append(r['count'])
+                        colors.append("rgba(44, 160, 44, 0.3)")
+                
+                fig = go.Figure(data=[go.Sankey(
+                    node = dict(
+                      pad = 15,
+                      thickness = 20,
+                      line = dict(color = "black", width = 0.5),
+                      label = labels,
+                      color = "lightgray"
+                    ),
+                    link = dict(
+                      source = sources,
+                      target = targets,
+                      value = values,
+                      color = colors
+                  ))])
+                  
+                fig.update_layout(title_text="Workforce Flow: Entry -> Rank -> Branch -> Pool", font_size=10, height=600)
+                st.plotly_chart(fig)
+        
+        with tab_ai:
+            st.markdown("### 🧠 What drives career patterns?")
+            st.info("The AI model learns different rules for different groups. Use the filters below to investigate the 'Laws of Promotion' for specific cohorts.")
             
-            fig = go.Figure(data=[go.Sankey(
-                node = dict(
-                  pad = 15,
-                  thickness = 20,
-                  line = dict(color = "black", width = 0.5),
-                  label = labels,
-                  color = "lightgray"
-                ),
-                link = dict(
-                  source = sources,
-                  target = targets,
-                  value = values,
-                  color = colors
-              ))])
-              
-            fig.update_layout(title_text="Workforce Flow: Entry -> Rank -> Branch -> Pool", font_size=10, height=600)
-            st.plotly_chart(fig)
+            c_f1, c_f2, c_f3 = st.columns(3)
+            with c_f1:
+                ai_branch = st.selectbox("Branch", ["All"] + sorted(df['Branch'].unique()))
+            with c_f2:
+                ai_pool = st.selectbox("Pool", ["All"] + sorted(df['Pool'].unique()))
+            with c_f3:
+                ai_entry = st.selectbox("Entry Type", ["All"] + sorted(df['Entry_type'].unique()))
+
+            if st.button("Run Global SHAP Analysis"):
+                filter_desc = f"{ai_branch}/{ai_pool}/{ai_entry}"
+                with st.spinner(f"Computing drivers for {filter_desc}..."):
+                     # Call get_global_context with all filters
+                     X_global = predictor.get_global_context(
+                         n=100, 
+                         branch_filter=ai_branch if ai_branch != "All" else None,
+                         pool_filter=ai_pool if ai_pool != "All" else None,
+                         entry_filter=ai_entry if ai_entry != "All" else None
+                     )
+                     
+                     if X_global is not None:
+                         expl_obj = predictor.xai.get_explanation_object(X_global)
+                         
+                         c1, c2 = st.columns(2)
+                         with c1:
+                             st.markdown("**Feature Impact (Beeswarm)**")
+                             fig_bee = explainer.create_global_beeswarm_plot(expl_obj)
+                             st.pyplot(fig_bee)
+                         with c2:
+                             st.markdown("**Feature Importance (Bar)**")
+                             fig_bar = explainer.create_global_bar_plot(expl_obj)
+                             st.pyplot(fig_bar)
+                     else:
+                         st.error(f"Insufficient data found for filter combination: {filter_desc}. Try relaxing constraints.")
             
     elif mode == "Simulation":
-        st.header("🎮 Career Simulation Playground")
-        st.markdown("Explore hypothetical career scenarios with intelligent constraints.")
+        st.header("🧪 Experiments Lab")
+        st.markdown("Design hypothetical officers, tweak parameters, and analyze how the AI reacts to specific career profiles.")
         
-        col1, col2 = st.columns(2)
-        with col1:
-            rank = st.selectbox("Rank", sorted(df['Rank'].unique()))
-            branch = st.selectbox("Branch", sorted(df['Branch'].unique()))
-            pool = st.selectbox("Pool", sorted(df['Pool'].unique()))
+        # Layout: Control Panel (Left), Results (Right)
+        col_inputs, col_results = st.columns([1, 1.2])
+        
+        with col_inputs:
+            st.markdown("### 1. Officer Profile")
+            c1, c2 = st.columns(2)
+            with c1:
+                rank = st.selectbox("Rank", sorted(df['Rank'].unique()), index=sorted(df['Rank'].unique()).index('Lieutenant') if 'Lieutenant' in df['Rank'].unique() else 0)
+                branch = st.selectbox("Branch", sorted(df['Branch'].unique()))
+            with c2:
+                pool = st.selectbox("Pool", sorted(df['Pool'].unique()))
+                entry = st.selectbox("Entry Type", sorted(df['Entry_type'].unique()))
             
-        with col2:
-            entry = st.selectbox("Entry Type", sorted(df['Entry_type'].unique()))
+            st.markdown("### 2. Career Markers")
+            years_rank = st.slider("Time in Current Rank (Years)", 0.0, 10.0, 3.5, 0.5, help="Directly affects 'years_in_current_rank' feature.")
+            total_service = st.slider("Total Service (Years)", 0, 40, 8, help="Affects 'years_service' feature.")
             
-            # Smart role selection: Filter roles by selected rank and branch
-            # Get roles from constraints that match the selected rank and branch
+            st.markdown("### 3. History & Qualifications")
+            
+            # Smart Role Selector (Context Aware)
             import json
             with open('models/all_constraints.json') as f:
                 constraints = json.load(f)
             
-            # Find roles that allow this rank and branch
             valid_roles = []
             for role_name, role_const in constraints.items():
-                allowed_ranks = role_const.get('ranks', [])
-                allowed_branches = role_const.get('branches', [])
-                
-                # Check if role is valid for selected rank and branch
-                if rank in allowed_ranks and branch in allowed_branches:
+                if rank in role_const.get('ranks', []) and branch in role_const.get('branches', []):
                     valid_roles.append(role_name)
             
-            if valid_roles:
-                valid_roles = sorted(valid_roles)
-                last_role = st.selectbox(
-                    "Current Role",
-                    valid_roles,
-                    help=f"Showing roles valid for {rank} in {branch} branch"
+            if not valid_roles: valid_roles = [f"Generic {rank} Role"]
+            
+            last_role = st.selectbox("Current Job Title", sorted(valid_roles), help="The text of the title matters for 'Title Similarity'.")
+            
+            common_training = [
+                "Command School", "Advanced Tactical", "Warp Theory", 
+                "Diplomatic Protocol", "Bridge Officer Test", "Strategic Operations", 
+                "First Contact Procedures", "Engineering Classification", "Medical Administration",
+                "Department Head Course", "Executive Officer Course"
+            ]
+            
+            training = st.multiselect("Completed Training", common_training, default=["Bridge Officer Test", "Advanced Tactical"])
+            
+            
+            run_btn = st.button("🚀 Run Prediction Analysis", type="primary", use_container_width=True)
+            
+            # --- PREDICTION LOGIC (Session State) ---
+            if run_btn:
+                # --- SYNTHESIZE DATA ---
+                now = datetime.now()
+                appt_start = (now - timedelta(days=365*years_rank))
+                appt_str = appt_start.strftime("%d %b %Y").upper()
+                appt_hist = f"{last_role} ({appt_str} - )"
+                train_hist_parts = [f"{t} (01 JAN 2020 - 01 FEB 2020)" for t in training]
+                train_hist = ", ".join(train_hist_parts)
+                
+                dummy_row = {
+                    'Employee_ID': [999999], 'Rank': [rank], 'Branch': [branch], 'Pool': [pool],
+                    'Entry_type': [entry], 'Appointment_history': [appt_hist], 'Training_history': [train_hist],
+                    'current_appointment': [last_role], 'appointed_since': [appt_start.strftime("%d/%m/%Y")],
+                    'DOB': ["01/01/1980"]
+                }
+                dummy_df = pd.DataFrame(dummy_row)
+                
+                with st.spinner("Analyzing patterns..."):
+                    try:
+                        results = predictor.predict(dummy_df, rank_flex_up=rank_flex_up, rank_flex_down=rank_flex_down)
+                        st.session_state['lab_results'] = results
+                        st.session_state['lab_dummy_df'] = dummy_df
+                    except Exception as e:
+                        st.error(f"Simulation Failed: {e}")
+            
+            # Show Results List in Left Column if they exist
+            if 'lab_results' in st.session_state and not st.session_state['lab_results'].empty:
+                st.divider()
+                st.markdown("### Top Recommendations")
+                
+                res_df = st.session_state['lab_results']
+                # Create a display label for selectbox
+                res_df['Label'] = res_df.apply(lambda x: f"{x['Confidence']:.1%} | {x.get('role', x.get('Prediction', 'Unknown'))}", axis=1)
+                
+                # Selection
+                sel_idx = st.selectbox(
+                    "Select Role to Analyze", 
+                    options=res_df.index,
+                    format_func=lambda i: res_df.loc[i, 'Label'],
+                    index=0
                 )
+                
+                st.dataframe(res_df[['Prediction', 'Confidence']], hide_index=True, use_container_width=True)
+
             else:
-                st.warning(f"No roles found for {rank} in {branch} branch. Using fallback.")
-                last_role = "Generic Officer Role"
-        
-        # Auto-calculate years of service based on rank
-        rank_to_years = {
-            'Ensign': 2,
-            'Lieutenant (jg)': 4,
-            'Lieutenant': 7,
-            'Lieutenant Commander': 11,
-            'Commander': 16,
-            'Captain': 22,
-            'Commodore': 28,
-            'Rear Admiral': 32
-        }
-        years_service = rank_to_years.get(rank, 5)
-        
-        st.info(f"📊 Auto-calculated: ~{years_service} years of service for {rank}")
-        
-        if st.button("🔮 Run Simulation"):
-            # Create realistic dummy data
-            dummy_data = {
-                'Employee_ID': [999999],
-                'Rank': [rank],
-                'Branch': [branch],
-                'Pool': [pool],
-                'Entry_type': [entry],
-                'Appointment_history': [f"{last_role} (01 JAN 2300 - )"],
-                'Training_history': [f"Basic Training (01 JAN 2290 - 01 FEB 2290), Advanced {branch} Course (01 JAN 2295 - 01 JUN 2295)"], 
-                'Promotion_history': [f"{rank} (01 JAN 2300 - )"],
-                'current_appointment': [last_role],
-                'appointed_since': ["01/01/2300"]
-            }
+                sel_idx = None
             
-            dummy_df = pd.DataFrame(dummy_data)
+        with col_results:
+            st.markdown("### 🔬 Analysis Console")
             
-            # Predict with current rank_flexibility setting
-            with st.spinner("Simulating career trajectory..."):
-                try:
-                    results = predictor.predict(dummy_df, rank_flex_up=rank_flex_up, rank_flex_down=rank_flex_down)
+            if sel_idx is not None and 'lab_results' in st.session_state:
+                results = st.session_state['lab_results']
+                top_res = results.loc[sel_idx]
+                
+                score = top_res['Confidence']
+                pred_role = top_res.get('role', top_res.get('Prediction', 'Unknown'))
+                
+                # 1. Score Card
+                st.success(f"**Recommendation**: {pred_role}")
+                sc_col1, sc_col2 = st.columns(2)
+                sc_col1.metric("Confidence", f"{score:.1%}")
+                sc_col2.metric("Raw AI Score", f"{top_res.get('_RawScore', 0):.2f}")
+                
+                # 2. Explainability
+                st.markdown("#### 📊 Decision Factors")
+                
+                feats = top_res.get('_Feats', {})
+                contribs = top_res.get('_Contribs', {})
+                
+                if contribs:
+                    base_v = top_res.get('_BaseVal', 0.0)
                     
-                    st.subheader("🎯 Simulation Results")
-                    st.dataframe(
-                        results.style.format({"Confidence": "{:.1%}"})
-                               .background_gradient(subset=["Confidence"], cmap="Greens", vmin=0, vmax=1.0),
-                        width="stretch",
-                        hide_index=True
-                    )
+                    # TABS: Individual vs Global
+                    t_ind, t_glob = st.tabs(["👤 Individual Analysis", "🌍 Global Model Insights"])
                     
-                    best_role = results.iloc[0]['Prediction']
-                    confidence = results.iloc[0]['Confidence']
-                    
-                    if confidence < 0.15:
-                        st.warning("⚠️ Low confidence. Try adjusting Rank Flexibility slider.")
-                    else:
-                        st.success(f"✨ Top Prediction: **{best_role}** ({confidence:.1%} confidence)")
+                    with t_ind:
+                        # A. WATERFALL
+                        st.markdown("##### 1. Decision Path (Waterfall)")
+                        fig = explainer.create_shap_waterfall(contribs, base_value=base_v, feats=feats)
+                        st.plotly_chart(fig, use_container_width=True, key=f"lab_shap_waterfall_{sel_idx}")
                         
-                except Exception as e:
-                    st.error(f"Simulation Error: {e}")
-                    st.info("Try adjusting the Rank Flexibility slider or selecting a different role.")
+                        # B. FORCE PLOT
+                        st.markdown("##### 2. Force Analysis")
+                        try:
+                            force_df = pd.DataFrame([feats])
+                            force_shap = pd.DataFrame([contribs])
+                            common_cols = force_df.columns.intersection(force_shap.columns)
+                            html = explainer.create_force_plot_html(
+                                base_value=base_v,
+                                shap_values=force_shap[common_cols].values[0],
+                                features=force_df[common_cols]
+                            )
+                            import streamlit.components.v1 as components
+                            components.html(html, height=120, scrolling=True)
+                        except Exception as e:
+                            st.error(f"Force plot error: {e}")
+                    
+                    with t_glob:
+                        st.markdown("**How does the model think generally?**")
+                        X_global = predictor.get_global_context(n=100)
+                        if X_global is not None:
+                            expl_obj = predictor.xai.get_explanation_object(X_global)
+                            st.markdown("##### 1. Feature Impact (Beeswarm)")
+                            fig_bee = explainer.create_global_beeswarm_plot(expl_obj)
+                            st.pyplot(fig_bee)
+                            st.markdown("##### 2. Feature Importance (Bar)")
+                            fig_bar = explainer.create_global_bar_plot(expl_obj)
+                            st.pyplot(fig_bar)
+                        else:
+                            st.error("Could not load global context.")
+
+                    # 3. Lab Notes
+                    st.divider()
+                    st.markdown("#### 📝 Lab Notes")
+                    suggestions = []
+                    
+                    if feats.get('years_in_current_rank', 0) < 2.0 and score < 0.5:
+                        suggestions.append(f"⏱️ **Tenure**: Low time in rank ({years_rank} yrs) is likely hurting the score.")
+                    
+                    if feats.get('prior_title_prob', 0) == 0:
+                        suggestions.append(f"📜 **History**: The jump from '{last_role}' to '{pred_role}' has NO historical precedent.")
+                    else:
+                        suggestions.append(f"📜 **History**: Valid historical path found ({feats.get('prior_title_prob',0):.1%}).")
+                        
+                    if feats.get('branch_match') == 0:
+                        suggestions.append("🔀 **Branch**: Cross-branch move detected.")
+                        
+                    for note in suggestions:
+                        st.info(note)
+                        
+                else:
+                    st.warning("No XAI data available.")
+            else:
+                st.info("👈 Configure your officer profile on the left and click 'Run Prediction Analysis' to see results.")
             
     elif mode == "Billet Lookup":
         st.header("Find Candidates for Role")
@@ -507,7 +648,7 @@ def main():
                             score = row['Confidence']
                             score_color = "🟢" if score > 0.5 else "🟡" if score > 0.1 else "⚪"
                             
-                            with st.expander(f"{score_color} {score:.1%} | {row['Rank']} {row['Name']} ({row['Branch']})"):
+                            with st.expander(f"{score_color} {score:.1%} | {row['Employee_ID']} - {row['Rank']} {row['Name']} ({row['Branch']}) - Currently {row.get('CurrentRole', 'Unknown')}"):
                                 # 1. Breakdown Chart
                                 st.markdown("#### 📊 Why this recommendation?")
                                 feats = row.get('_Feats', {})
@@ -539,9 +680,31 @@ def main():
                                     if contribs:
                                         with st.expander("🔍 Deep Dive Analysis (XAI)"):
                                             st.markdown("This chart shows exactly how each feature pushed the score up (Green) or down (Red).")
-                                            fig = explainer.create_shap_waterfall(contribs)
-                                            # Ensure unique key for each row in the list
-                                            st.plotly_chart(fig, use_container_width=True, key=f"xai_billet_{idx}_{row['Employee_ID']}")
+                                            
+                                            # TABS
+                                            xb_t1, xb_t2 = st.tabs(["Waterfall", "Force Plot"])
+                                            
+                                            with xb_t1:
+                                                # Pass Base Value for accurate Waterfall starting point
+                                                base_v = row.get('_BaseVal', 0.0)
+                                                # Pass feats for tooltips
+                                                fig_wf = explainer.create_shap_waterfall(contribs, base_value=base_v, feats=feats)
+                                                st.plotly_chart(fig_wf, use_container_width=True, key=f"xai_billet_{idx}_{row['Employee_ID']}")
+                                            
+                                            with xb_t2:
+                                                try:
+                                                    force_df = pd.DataFrame([feats])
+                                                    force_shap = pd.DataFrame([contribs])
+                                                    common_cols = force_df.columns.intersection(force_shap.columns)
+                                                    html = explainer.create_force_plot_html(
+                                                        base_value=row.get('_BaseVal', 0.0),
+                                                        shap_values=force_shap[common_cols].values[0],
+                                                        features=force_df[common_cols]
+                                                    )
+                                                    import streamlit.components.v1 as components
+                                                    components.html(html, height=120, scrolling=True)
+                                                except Exception as e:
+                                                    st.error(f"Force Plot Error: {e}")
                                 
                                 # 2. Historical Precedents
                                 st.markdown("#### 📜 Historical Precedents")
