@@ -7,13 +7,14 @@ import joblib
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import roc_auc_score, accuracy_score
 
-def train_ltr():
+def train_ltr(data_path='data/ltr/train_pairs.csv', model_dir='models/ltr'):
     print("="*60)
     print("🚀 Training Learning-to-Rank Model (LightGBM)")
+    print(f"Data: {data_path}")
+    print(f"Output: {model_dir}")
     print("="*60)
     
     # 1. Load Data
-    data_path = 'data/ltr/train_pairs.csv'
     if not os.path.exists(data_path):
         print("Error: Training data not found. Run build_ltr_dataset.py first.")
         return
@@ -87,12 +88,18 @@ def train_ltr():
     print(imp_df.head(10))
     
     # 7. Save
-    model_dir = 'models/ltr'
+    # 7. Save
     os.makedirs(model_dir, exist_ok=True)
     
     print(f"Saving model to {model_dir}...")
     joblib.dump(model, os.path.join(model_dir, 'lgbm_ranker.pkl'))
     joblib.dump(feature_cols, os.path.join(model_dir, 'feature_cols.pkl'))
+    
+    # Save Metrics
+    import json
+    metrics = {'accuracy': acc, 'auc': score}
+    with open(os.path.join(model_dir, 'metrics.json'), 'w') as f:
+        json.dump(metrics, f)
     
     print("✓ Training Complete.")
 

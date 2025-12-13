@@ -12,19 +12,22 @@ import sys
 # Add root
 sys.path.append(os.getcwd())
 
-def build_dataset():
+def build_dataset(csv_path=None, output_dir='data/ltr'):
     print("="*60)
     print("🏗️  Building Learning-to-Rank Dataset")
+    print(f"Source: {csv_path} -> Output: {output_dir}")
     print("="*60)
     
     # 1. Load Data
-    try:
-        from config import DATASET_PATH
-    except:
-        DATASET_PATH = 'data/hr_star_trek_v4c_modernized_clean_modified_v4.csv'
+    if csv_path is None:
+        try:
+            from config import DATASET_PATH
+            csv_path = DATASET_PATH
+        except:
+            csv_path = 'data/hr_star_trek_v4c_modernized_clean_modified_v4.csv'
         
     dp = DataProcessor()
-    df_raw = pd.read_csv(DATASET_PATH)
+    df_raw = pd.read_csv(csv_path)
     df_transitions = dp.create_transition_dataset(df_raw)
     
     print(f"Loaded {len(df_transitions)} transitions.")
@@ -168,15 +171,14 @@ def build_dataset():
     print(f"Final Dataset: {len(df_ltr)} rows.")
     
     # Save
-    out_dir = 'data/ltr'
-    os.makedirs(out_dir, exist_ok=True)
+    os.makedirs(output_dir, exist_ok=True)
     
-    df_ltr.to_csv(os.path.join(out_dir, 'train_pairs.csv'), index=False)
+    df_ltr.to_csv(os.path.join(output_dir, 'train_pairs.csv'), index=False)
     
     # Save Artifacts
-    joblib.dump(role_meta, os.path.join(out_dir, 'role_meta.pkl'))
-    joblib.dump(transition_stats, os.path.join(out_dir, 'transition_stats.pkl'))
-    ltr_fe.save(os.path.join(out_dir, 'ltr_fe.pkl'))
+    joblib.dump(role_meta, os.path.join(output_dir, 'role_meta.pkl'))
+    joblib.dump(transition_stats, os.path.join(output_dir, 'transition_stats.pkl'))
+    ltr_fe.save(os.path.join(output_dir, 'ltr_fe.pkl'))
     
     print("✓ Dataset & Artifacts Saved.")
 

@@ -112,7 +112,7 @@ def main():
         explainer = load_explainer_v4(df, known_titles)
         
     # Navigation
-    mode = st.sidebar.radio("Mode", ["Employee Lookup", "Simulation", "Billet Lookup", "Branch Analytics"])
+    mode = st.sidebar.radio("Mode", ["Employee Lookup", "Simulation", "Billet Lookup", "Branch Analytics", "Dataset Explorer", "Admin Console"])
     
     # ... (Cache control) ...
     
@@ -126,7 +126,699 @@ def main():
         st.rerun()
     
     # =========================================================================
-    # MODE 1: EMPLOYEE LOOKUP (FILTERED ITERATION)
+    # MODE 5: DATASET EXPLORER
+    # =========================================================================
+    if mode == "Dataset Explorer":
+        st.header("💾 Dataset HR Explorer")
+        st.markdown("Interactive exploration of the workforce hierarchy, organizational structure, and career paths.")
+
+        tab_hier, tab_org, tab_flow, tab_stats = st.tabs([
+            "👑 HR Hierarchy", 
+            "🏢 Org Structure", 
+            "🔀 Career Path Flow",
+            "📊 Statistics"
+        ])
+        
+        # --- TAB 1: HR HIERARCHY ---
+        with tab_hier:
+            st.markdown("### Multi-Level Hierarchy Analysis")
+            import plotly.express as px
+            
+            h_col1, h_col2 = st.columns(2)
+            with h_col1:
+                hier_path = st.multiselect("Hierarchy Path", ['Branch', 'Rank', 'Pool', 'Entry_type'], default=['Branch', 'Rank', 'Pool'])
+            with h_col2:
+                color_by = st.selectbox("Color By", ['Count', 'Avg Service (Years)', 'Avg Eval Score'])
+                
+            if hier_path:
+                # Aggregate
+                agg_cols = hier_path
+                # We need metrics. Join with specific columns.
+                # Eval Score? Not in sample dataset rows explicitly as number, mainly textual history? 
+                # Actually, check DataProcessor features. 
+                # Let's count and sum service years.
+                
+                # Check metrics available in df
+                # 'years_service' isn't in df unless calculated by FeatureEngineer. 
+                # We should run FE on full df if not present, OR do quick calc.
+                # Predictor loads df but maybe doesn't save FE result to main 'df' var?
+                # 'df' comes from load_data(). It is RAW.
+                
+                # Quick enrichment if needed
+                if 'years_service' not in df.columns:
+                     # Simple approx
+                     # Parse Date? Expensive for UI.
+                     # Let's check if we can reuse predictor's logic or just skip complex metrics for now.
+                     pass
+                
+                # GroupBy
+                # We need a 'count' column
+                df_viz = df.copy()
+                df_viz['count'] = 1
+                
+            if hier_path:
+                # Aggregate
+                # We need a 'count' column
+                df_viz = df.copy()
+                df_viz['count'] = 1
+                
+                if color_by == 'Count':
+                    fig = px.sunburst(df_viz, path=hier_path, values='count', 
+                                      color='count', color_continuous_scale='Viridis',
+                                      title=f"Workforce by {' > '.join(hier_path)}")
+                else:
+                    st.info("Metric-based coloring requires pre-calculated metrics. Using Count for now.")
+                    fig = px.sunburst(df_viz, path=hier_path, values='count',
+                                      title=f"Workforce by {' > '.join(hier_path)}")
+                
+                # SIMPLIFY: Clean text, detail in tooltip
+                fig.update_traces(textinfo='label', hoverinfo='label+value+percent entry')
+                fig.update_layout(height=700)
+                st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.warning("Select at least one level for hierarchy.")
+
+        # --- TAB 2: ORG STRUCTURE ---
+        with tab_org:
+            st.markdown("### 🏢 Organizational Unit Browser")
+            st.info("Drill down from high-level Units to individual Posts.")
+            
+            # 1. Parse Units Heuristically
+            def extract_unit(appt):
+                if pd.isna(appt): return "Unknown", "Unknown"
+                s = str(appt)
+                if '/' in s:
+                    parts = s.split('/')
+                    left = parts[0].strip()
+                    post = parts[1].strip()
+                    return left, post
+                else:
+                    return s, "General Staff"
+
+            # Check if cached
+            if 'Unit' not in df.columns:
+                with st.spinner("Parsing Organizational Structure..."):
+                    df[['Org_Unit', 'Org_Post']] = df['current_appointment'].apply(lambda x: pd.Series(extract_unit(x)))
+            
+            # Tree Map: Unit -> Post
+            org_view = df.groupby(['Org_Unit', 'Org_Post']).size().reset_index(name='count')
+            
+            # Search Filter
+            search_unit = st.text_input("Search Unit", "")
+            if search_unit:
+                org_view = org_view[org_view['Org_Unit'].str.contains(search_unit, case=False)]
+            
+            if len(org_view) > 0:
+                fig_tree = px.treemap(org_view, path=['Org_Unit', 'Org_Post'], values='count',
+                                      color='count', color_continuous_scale='Blues',
+                                      title="Organizational Command Structure")
+                fig_tree.update_layout(height=800) # Taller for more data
+                fig_tree.update_traces(textinfo="label+value", root_color="lightgrey")
+                st.plotly_chart(fig_tree, use_container_width=True)
+                
+                # Leaf Detail Picker
+                st.divider()
+                st.markdown("#### 👤 Unit Roster")
+                sel_unit = st.selectbox("Select Unit to Inspect", sorted(org_view['Org_Unit'].unique()))
+                
+                if sel_unit:
+                    roster = df[df['Org_Unit'] == sel_unit]
+                    st.dataframe(roster[['Employee_ID', 'Rank', 'Name', 'current_appointment', 'Branch']], hide_index=True)
+            else:
+                st.warning("No units match search.")
+
+        # --- TAB 3: CAREER PATH FLOW (SANKEY) ---
+        with tab_flow:
+            st.markdown("### 🔀 Interactive Career Path Explorer")
+            st.caption("Trace how officers move between specific roles. Use filters to focus the diagram.")
+            import plotly.graph_objects as go
+            
+            # Filters
+            fc1, fc2, fc3 = st.columns(3)
+            with fc1:
+                f_branch = st.multiselect("Filter Branch", sorted(df['Branch'].unique()), default=[])
+            with fc2:
+                f_rank = st.multiselect("Filter Rank", sorted(df['Rank'].unique()), default=[])
+            with fc3:
+                use_generic = st.checkbox("Group by Generic Titles", value=True, help="Merges 'Div Officer USS A' and 'Div Officer USS B' into 'Div Officer'")
+
+            # Data Prep
+            sankey_df = df.copy()
+            if f_branch: sankey_df = sankey_df[sankey_df['Branch'].isin(f_branch)]
+            if f_rank: sankey_df = sankey_df[sankey_df['Rank'].isin(f_rank)]
+            
+            # Helper to generate transitions
+            transitions = []
+            
+            # Regex for generic cleaning
+            def clean_title(t):
+                if not use_generic: return t.strip()
+                t = re.sub(r'\s*\/.*', '', t) # Remove post
+                t = re.sub(r'\s*USS .*', '', t) # Remove Ship
+                t = re.sub(r'\s*Starbase .*', '', t) # Remove Starbase
+                return t.strip()
+
+            import re
+            
+            for _, row in sankey_df.iterrows():
+                # Parse History
+                hist_str = row['Appointment_history']
+                if not isinstance(hist_str, str): continue
+                
+                # Clean and Split
+                raw_items = hist_str.split(',')
+                roles = []
+                for item in raw_items:
+                    clean = re.sub(r'\s*\(.*?\)', '', item).strip()
+                    if clean:
+                        roles.append(clean_title(clean))
+                
+                # Chain
+                if len(roles) >= 2:
+                    for i in range(len(roles)-1):
+                        transitions.append((roles[i], roles[i+1]))
+            
+            # --- NETWORK GRAPH IMPLEMENTATION ---
+            import networkx as nx
+            import numpy as np
+            
+            # 1. Build Transitions & Identify Ranks
+            transitions = []
+            node_rank_evidence = {} # Map Role -> List of Ranks seen
+            
+            # Helper to clean titles
+            def clean_title_network(t):
+                if not use_generic: return t.strip()
+                t = re.sub(r'\s*\/.*', '', t) # Remove post
+                t = re.sub(r'\s*USS .*', '', t) # Remove Ship
+                t = re.sub(r'\s*Starbase .*', '', t) # Remove Starbase
+                return t.strip()
+            
+            # We process rows to get Transitions AND Role->Rank mapping
+            for _, row in sankey_df.iterrows():
+                row_rank = row['Rank']
+                hist_str = row['Appointment_history']
+                
+                if not isinstance(hist_str, str): continue
+                
+                # Split history
+                raw_items = hist_str.split(',')
+                roles = []
+                for item in raw_items:
+                    clean = re.sub(r'\s*\(.*?\)', '', item).strip()
+                    if clean:
+                        final_role = clean_title_network(clean)
+                        roles.append(final_role)
+                        
+                        # Collect Rank Evidence
+                        # We assume the user's CURRENT rank applies to their LAST role? 
+                        # Or do we rely on the row['Rank'] for the *current* role?
+                        # Heuristic: The *last* role in the history list tends to be the Current Appointment title.
+                        # So we associate row['Rank'] with the LAST role in the list.
+                        # For previous roles, we don't know the rank for sure, but we can infer from other rows where that role IS the current one.
+                        
+                if roles:
+                    # Current Role (Last item) gets the Current Rank
+                    curr_role = roles[-1]
+                    if curr_role not in node_rank_evidence: node_rank_evidence[curr_role] = []
+                    node_rank_evidence[curr_role].append(row_rank)
+                    
+                    # Transitions
+                    if len(roles) >= 2:
+                        for i in range(len(roles)-1):
+                            transitions.append((roles[i], roles[i+1]))
+
+            if transitions:
+                # 2. Define Rank Hierarchy (Master List)
+                # We use this ONLY for sorting. We only display ranks actually present in data.
+                master_rank_order = [
+                    'Ensign', 'Lieutenant (jg)', 'Lieutenant', 'Lieutenant Commander', 
+                    'Commander', 'Captain', 'Commodore', 'Rear Admiral', 'Vice Admiral', 'Admiral'
+                ]
+                # Fallback for unknown ranks: put them at bottom or top
+                
+                # Determine "Actual" Ranks present in this filtered dataset
+                present_ranks = sankey_df['Rank'].unique()
+                
+                # Sort present ranks based on master order
+                sorted_ranks = []
+                for mr in master_rank_order:
+                    if mr in present_ranks:
+                        sorted_ranks.append(mr)
+                
+                # Add any unknown ranks that weren't in master list (e.g. 'Cadet')
+                for pr in present_ranks:
+                    if pr not in sorted_ranks:
+                        sorted_ranks.insert(0, pr) # Put unknowns at start (junior)
+                        
+                # 3. Resolve Node Ranks
+                # Map each Role to its Mode Rank (most frequent)
+                node_assigned_rank = {}
+                for role, ranks in node_rank_evidence.items():
+                    if not ranks: continue
+                    from collections import Counter
+                    common = Counter(ranks).most_common(1)
+                    node_assigned_rank[role] = common[0][0]
+                
+                # Also include nodes involved in transitions but maybe not as "current" (last) role
+                # These might lack direct rank evidence. We assign them to 'Ensign' or infer?
+                # For now, if no evidence, skip or assign lowest.
+                
+                # Build Graph
+                G = nx.DiGraph()
+                
+                # Add edges (weighted)
+                t_counts = Counter(transitions)
+                for (u, v), w in t_counts.items():
+                    G.add_edge(u, v, weight=w)
+                
+                # Define all_nodes for usage in other charts
+                all_nodes = list(G.nodes())
+                
+                # 4. Metrics for Visuals (Centrality, Communities)
+                # "Visualize entire appointment space" -> Clusters of related roles.
+                # k parameter controls spacing.
+                pos = nx.spring_layout(G, k=0.15, iterations=50, seed=42)
+                
+                # Metrics for Visuals
+                # Centrality -> Node Size
+                centrality = nx.degree_centrality(G)
+                # Communities -> Node Color
+                # Use greedy_modularity_communities (undirected for community)
+                from networkx.algorithms import community
+                try:
+                    communities = community.greedy_modularity_communities(G.to_undirected())
+                    # Map node -> community ID
+                    comm_map = {}
+                    for i, comm in enumerate(communities):
+                        for n in comm:
+                            comm_map[n] = i
+                except:
+                    comm_map = {n: 0 for n in G.nodes()}
+
+                # 5. Advanced ECharts Visualizations
+                from streamlit_echarts import st_echarts
+                import random
+                
+                # Selector
+                viz_type = st.radio(
+                    "Visualization Mode", 
+                    ["🕸️ Network Graph (Relationship Map)", "🌊 Sankey Diagram (Flow)", "🗺️ Career Lattice (Rank vs Branch)"], 
+                    horizontal=True
+                )
+                
+                # --- A. NETWORK GRAPH (FIXED LES MIS STYLE) ---
+                if "Network" in viz_type:
+                    # 1. Cluster Naming Heuristic
+                    cluster_names = {}
+                    unique_ids = sorted(list(set(comm_map.values())))
+                    
+                    for cid in unique_ids:
+                        nodes_in_c = [n for n, c in comm_map.items() if c == cid]
+                        words = []
+                        for n in nodes_in_c:
+                            parts = re.split(r'[\s\(\)\-\/]+', n)
+                            for p in parts:
+                                if len(p) > 3 and p.lower() not in ['officer', 'chief', 'asst', 'vice', 'staff']:
+                                    words.append(p)
+                        
+                        from collections import Counter
+                        if words:
+                            top_word = Counter(words).most_common(1)[0][0]
+                            cluster_time = f"{top_word} Group"
+                        else:
+                            ranks = [node_assigned_rank.get(n, "") for n in nodes_in_c]
+                            if ranks:
+                                top_rank = Counter(ranks).most_common(1)[0][0]
+                                cluster_time = f"{top_rank} Group"
+                            else:
+                                cluster_time = f"Cluster {cid}"
+                            
+                        cluster_names[cid] = cluster_time
+
+                    # 2. Caching Layout (Prevent Resets)
+                    layout_key = f"layout_{hash(tuple(sorted(list(G.nodes()))))}"
+                    
+                    if layout_key not in st.session_state:
+                         # Calculate optimal layout once
+                         st.session_state[layout_key] = nx.spring_layout(G, k=0.15, iterations=100, seed=42)
+                    
+                    pos_screen = st.session_state[layout_key]
+                    
+                    # Prepare Nodes with Fixed X, Y
+                    echarts_nodes = []
+                    
+                    vals = np.array(list(pos_screen.values()))
+                    min_v = vals.min(axis=0)
+                    max_v = vals.max(axis=0)
+                    
+                    node_list = list(G.nodes())
+                    categories = [{"name": cluster_names[cid]} for cid in unique_ids]
+                    
+                    for i, node in enumerate(node_list):
+                        # Safe normalization
+                        denom_x = (max_v[0] - min_v[0]) if (max_v[0] - min_v[0]) != 0 else 1
+                        denom_y = (max_v[1] - min_v[1]) if (max_v[1] - min_v[1]) != 0 else 1
+                        
+                        x_norm = (pos_screen[node][0] - min_v[0]) / denom_x
+                        y_norm = (pos_screen[node][1] - min_v[1]) / denom_y
+                        
+                        # Scale
+                        x_fixed = x_norm * 1000 - 500
+                        y_fixed = y_norm * 800 - 400
+                        
+                        deg = G.degree(node)
+                        sz = min(10 + deg*3, 60)
+                        
+                        cid = comm_map.get(node, 0)
+                        cat_name = cluster_names[cid]
+                        
+                        try:
+                            cat_idx = next(i for i, c in enumerate(categories) if c["name"] == cat_name)
+                        except:
+                            cat_idx = 0
+                        
+                        echarts_nodes.append({
+                            "name": node,
+                            "x": x_fixed,
+                            "y": y_fixed,
+                            "symbolSize": sz,
+                            "category": cat_idx,
+                            "value": deg,
+                            "label": {"show": deg > 5}
+                        })
+
+                    # Links
+                    echarts_links = [{"source": u, "target": v} for u, v in G.edges()]
+                    
+                    option = {
+                        "title": {
+                            "text": "Appointment Relationship Map",
+                            "subtext": "Fixed Layout (Cached)",
+                            "top": "bottom",
+                            "left": "right"
+                        },
+                        "tooltip": {},
+                        "legend": [{
+                            "data": [c["name"] for c in categories],
+                            "type": "scroll", 
+                            "orient": "horizontal",
+                            "top": 10
+                        }],
+                        "series": [{
+                            "name": "Roles",
+                            "type": "graph",
+                            "layout": "none", # FIXED POSITIONS
+                            "data": echarts_nodes,
+                            "links": echarts_links,
+                            "categories": categories,
+                            "roam": True,
+                            "label": {
+                                "position": "right",
+                                "formatter": "{b}"
+                            },
+                            "lineStyle": {
+                                "color": "source",
+                                "curveness": 0.3
+                            },
+                            "emphasis": {
+                                "focus": "adjacency",
+                                "lineStyle": {"width": 5}
+                            }
+                        }]
+                    }
+                    st_echarts(option, height="700px")
+                    st.caption("ℹ️ **Stable Layout**: Graph positions are cached. Changing filters will regenerate the layout.")
+                    
+                # --- B. SANKEY (DAG ENFORCED) ---
+                elif "Sankey" in viz_type:
+                    # 1. Build Temporary Graph
+                    G_sankey = nx.DiGraph()
+                    t_counts = Counter(transitions)
+                    for (u, v), w in t_counts.items():
+                        if w > 0: G_sankey.add_edge(u, v, weight=w)
+                    
+                    # 2. Strict DAG Enforcement (The "Rigorous" Fix)
+                    # Sankey fails on cycles. Remove self-loops first.
+                    G_sankey.remove_edges_from(nx.selfloop_edges(G_sankey))
+                    
+                    # Iteratively remove cycles
+                    # Limit iterations to avoid infinite loops in worst case
+                    max_breaks = 100
+                    breaks = 0
+                    while not nx.is_directed_acyclic_graph(G_sankey) and breaks < max_breaks:
+                        try:
+                            cycle = nx.find_cycle(G_sankey)
+                            # Remove the edge with lowest weight in the cycle to preserve main flows
+                            # (Simple heuristic: just remove the first edge found in cycle for speed)
+                            G_sankey.remove_edge(*cycle[0][:2]) 
+                            breaks += 1
+                        except:
+                            break
+                            
+                    # 3. Build Safe Data
+                    slinks = []
+                    found_nodes = set()
+                    
+                    for u, v, data in G_sankey.edges(data=True):
+                        w = data.get('weight', 1)
+                        slinks.append({"source": str(u), "target": str(v), "value": int(w)})
+                        found_nodes.add(str(u))
+                        found_nodes.add(str(v))
+
+                    if not slinks:
+                        st.warning("⚠️ No valid acyclic career paths found. Try expanding your filters.")
+                    else:
+                        snodes = [{"name": n} for n in sorted(list(found_nodes))]
+                        
+                        option = {
+                            "title": {"text": "Career Transition Flow (Acyclic)", "left": "center"},
+                            "tooltip": {"trigger": "item", "triggerOn": "mousemove"},
+                            "series": [{
+                                "type": "sankey",
+                                "data": snodes,
+                                "links": slinks,
+                                "orient": "horizontal",
+                                "label": {"position": "right"},
+                                "lineStyle": {"color": "source", "curveness": 0.5},
+                                "layoutIterations": 32 
+                            }]
+                        }
+                        st_echarts(option, height="800px")
+                        if breaks > 0:
+                            st.caption(f"🌊 **Sankey Diagram**: Visualizing linear flows. Note: {breaks} cyclic loops were hidden to ensure rendering.")
+                        else:
+                            st.caption("🌊 **Sankey Diagram**: Shows volume of movement between roles.")
+                    
+                # --- C. CAREER LATTICE (JITTERED) ---
+                elif "Lattice" in viz_type:
+                    # 1. Setup Axes
+                    if 'sorted_ranks' not in locals():
+                        sorted_ranks = ["Ensign", "Lieutenant (jg)", "Lieutenant", "Lieutenant Commander", "Commander", "Captain", "Commodore", "Rear Admiral", "Vice Admiral", "Admiral"]
+                    
+                    # Map Nodes to Branches
+                    role_branch_groups = sankey_df.groupby('current_appointment')['Branch'].agg(lambda x: x.mode()[0] if not x.mode().empty else "Unknown")
+                    node_branch_map = role_branch_groups.to_dict()
+                    present_branches = sorted(list(set([node_branch_map.get(n, "Unknown") for n in G.nodes()])))
+                    
+                    # 2. Build Nodes with JITTER and NO LABELS (by default)
+                    lattice_nodes = []
+                    
+                    for node in G.nodes():
+                        # Y: Branch
+                        b = node_branch_map.get(node, "Unknown")
+                        try: y_idx = present_branches.index(b)
+                        except: y_idx = 0
+                            
+                        # X: Rank
+                        r = node_assigned_rank.get(node, "Unknown")
+                        try: x_idx = sorted_ranks.index(r)
+                        except: x_idx = 0
+                        
+                        # Add Jitter to prevent overlap
+                        rng = random.Random(str(node)) # Deterministic jitter based on name
+                        x_jit = x_idx + rng.uniform(-0.35, 0.35)
+                        y_jit = y_idx + rng.uniform(-0.35, 0.35)
+                        
+                        lattice_nodes.append({
+                            "name": node,
+                            "value": [x_jit, y_jit], # JITTERED COORDINATES
+                            "symbolSize": 10 + (G.degree(node)*1.5),
+                            "itemStyle": {"color": "#5470c6"},
+                            # HIDE LABELS to reduce clutter
+                            "label": {"show": False, "formatter": "{b}"},
+                            "emphasis": {
+                                "label": {"show": True, "position": "top", "fontWeight": "bold"}
+                            }
+                        })
+                        
+                    # 3. Links
+                    lattice_links = [{"source": u, "target": v} for u, v in G.edges()]
+                    
+                    option = {
+                        "title": {"text": "Career Lattice (Rank vs Branch)", "left": "center"},
+                        "tooltip": {"trigger": "item"},
+                        "grid": {
+                            "left": "15%", "right": "15%", "top": "10%", "bottom": "10%"
+                        },
+                        "xAxis": {
+                            "type": "category",
+                            "data": sorted_ranks,
+                            "name": "Rank Progression",
+                            "nameLocation": "middle",
+                            "nameGap": 30
+                        },
+                        "yAxis": {
+                            "type": "category",
+                            "data": present_branches,
+                            "name": "Branch / Pool",
+                            "nameLocation": "end"
+                        },
+                        "series": [{
+                            "type": "graph",
+                            "layout": "none",
+                            "coordinateSystem": "cartesian2d",
+                            "data": lattice_nodes,
+                            "links": lattice_links,
+                            "edgeSymbol": ['none', 'arrow'],
+                            "edgeSymbolSize": [4, 8],
+                            "lineStyle": {
+                                "color": "#ccc",
+                                "curveness": 0.1,
+                                "width": 1,
+                                "opacity": 0.6
+                            },
+                            "roam": True
+                        }]
+                    }
+                    
+                    st_echarts(option, height="800px")
+                    st.caption("🗺️ **Career Lattice**: Roles are plotted by Rank (X) and Branch (Y). **Nodes are jittered** to show overlaps. Hover to see names.")
+            
+            else:
+                st.info("No transition data for selected.")
+
+
+        # --- TAB 4: STATISTICS ---
+        with tab_stats:
+            st.markdown("### 📊 Dataset Demographics")
+            
+            k1, k2, k3, k4 = st.columns(4)
+            k1.metric("Total Officers", len(df))
+            k2.metric("Unique Roles", df['current_appointment'].nunique())
+            k3.metric("Branches", df['Branch'].nunique())
+            k4.metric("Avg Service", "N/A") # Placeholder
+            
+            # Charts
+            c1, c2 = st.columns(2)
+            with c1:
+                st.markdown("**Rank Distribution**")
+                st.bar_chart(df['Rank'].value_counts())
+            with c2:
+                st.markdown("**Branch Distribution**")
+                st.bar_chart(df['Branch'].value_counts())
+
+    # =========================================================================
+    # MODE 6: ADMIN CONSOLE (RETRAINING HUD)
+    # =========================================================================
+    if mode == "Admin Console":
+        st.header("🛠️ Model Management Console")
+        st.markdown("Upload new data, retrain the AI, and manage deployments.")
+        
+        from src.training_manager import TrainingManager
+        manager = TrainingManager(base_dir=os.getcwd())
+        
+        # Session State for Training Flow
+        if 'training_session' not in st.session_state:
+            st.session_state.training_session = None
+        
+        # 1. Dataset Upload
+        st.subheader("1. Update Knowledge Base")
+        uploaded_file = st.file_uploader("Upload Updated HR Dataset (CSV)", type="csv")
+        
+        if uploaded_file:
+            # Save temp
+            path = manager.save_uploaded_dataset(uploaded_file)
+            st.success(f"File uploaded: {os.path.basename(path)}")
+            
+            # Validate
+            valid, msg = manager.validate_dataset(path)
+            if valid:
+                st.success("✅ Dataset Structure Validated")
+                
+                # 2. Training Trigger
+                st.subheader("2. Retrain Model")
+                st.info("Training will generate a new 'Staging' model. Production is not affected until you deploy.")
+                
+                if st.button("🚀 Start Training Pipeline"):
+                    with st.status("Running Training Pipeline...", expanded=True) as status:
+                        st.write("Initializing...")
+                        
+                        # Run Training
+                        session_id, result = manager.train_staging_model(path)
+                        
+                        if session_id:
+                            st.write("✅ Data Processing Complete")
+                            st.write("✅ LTR Model Trained")
+                            st.write("✅ Artifacts Generated")
+                            status.update(label="Training Complete!", state="complete", expanded=False)
+                            
+                            st.session_state.training_session = session_id
+                            st.session_state.training_metrics = result # Save metrics
+                            st.success(f"Training Success! Session ID: {session_id}")
+                        else:
+                            status.update(label="Training Failed", state="error")
+                            st.error(f"Pipeline Error: {result}")
+            else:
+                st.error(f"❌ Validation Failed: {msg}")
+                
+        # 3. Deployment
+        if st.session_state.training_session:
+            st.divider()
+            st.subheader("3. Review & Deploy")
+            st.info(f"Staging Model Ready: {st.session_state.training_session}")
+            
+            # Show Metrics
+            if 'training_metrics' in st.session_state and isinstance(st.session_state.training_metrics, dict):
+                m = st.session_state.training_metrics
+                m_col1, m_col2 = st.columns(2)
+                m_col1.metric("New Model Accuracy", f"{m.get('accuracy', 0):.2%}")
+                m_col2.metric("New Model AUC", f"{m.get('auc', 0):.4f}")
+            else:
+                st.warning("Metrics unavailable.")
+            
+            st.markdown("---")
+            col_d1, col_d2 = st.columns(2)
+            with col_d1:
+                if st.button("📢 Deploy to Production", type="primary"):
+                    success, msg = manager.commit_model(st.session_state.training_session)
+                    if success:
+                        st.success(f"DEPLOYED! {msg}")
+                        st.cache_resource.clear()
+                        st.balloons()
+                    else:
+                        st.error(f"Deployment Failed: {msg}")
+            
+            with col_d2:
+                if st.button("🗑️ Discard Staging Model"):
+                    st.session_state.training_session = None
+                    st.rerun()
+
+        # 4. Rollback
+        st.divider()
+        with st.expander("⚠️ Danger Zone: Rollback"):
+            st.warning("Restore the previous model version if the current one is unstable.")
+            if st.button("⏪ Rollback to Last Backup"):
+                success, msg = manager.rollback()
+                if success:
+                    st.success(msg)
+                    st.cache_resource.clear()
+                    st.rerun()
+                else:
+                    st.error(msg)
+    
+    # =========================================================================
+    # MODE 1: EMPLOYEE LOOKUP
     # =========================================================================
     if mode == "Employee Lookup":
         st.header("Search & Predict")
