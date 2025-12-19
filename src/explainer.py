@@ -130,10 +130,67 @@ class Explainer:
         matches = self.transition_index.get(key, [])
         
         if not matches and fuzzy:
-            # Try to partial match? Expensive.
-            pass
+            # Fuzzy Fallback
+            # Check for keys that look like (from, to)
+            import difflib
+            
+            # Map known titles
+            close_from = difflib.get_close_matches(k_from, self.known_titles, n=1, cutoff=0.6)
+            close_to = difflib.get_close_matches(k_to, self.known_titles, n=1, cutoff=0.6)
+            
+            if close_from and close_to:
+                fuzzy_key = (close_from[0], close_to[0])
+                matches = self.transition_index.get(fuzzy_key, [])
             
         return matches[:limit]
+
+    def get_relevant_experience(self, target_role, candidate_history, limit=3):
+        """
+        Analyzes candidate's past roles to see if any are known feeders for the target role.
+        """
+        # 1. Identify all Feeders for Target Role
+        # Scan transition index: (Any, Target) -> Count
+        norm_target = self._normalize_title(target_role)
+        feeders = {} # role -> frequency
+        
+        for (t_from, t_to), officers in self.transition_index.items():
+            if t_to == norm_target:
+                feeders[t_from] = feeders.get(t_from, 0) + len(officers)
+                
+        if not feeders:
+            return []
+            
+        # 2. Check Candidate History
+        # Parse history string 'Role A > Role B > ...'
+        cand_roles = []
+        if isinstance(candidate_history, str):
+             # Try clean splits first
+             import re
+             # Split by ">" if we pre-processed it, or "," from raw
+             if ">" in candidate_history:
+                 parts = candidate_history.split('>') 
+             else:
+                 parts = candidate_history.split(',')
+                 
+             for p in parts:
+                 clean = re.sub(r'\s*\(.*?\)', '', p).strip()
+                 if clean: cand_roles.append(self._normalize_title(clean))
+        
+        # 3. Find Intersection
+        hits = []
+        seen = set()
+        for role in cand_roles:
+            if role in feeders and role not in seen:
+                hits.append({
+                    'role': role,
+                    'frequency': feeders[role],
+                    'desc': f"Historically, {feeders[role]} officers promoted to '{target_role}' from type '{role}'."
+                })
+                seen.add(role)
+                
+        # Sort by frequency (Relevance)
+        hits.sort(key=lambda x: x['frequency'], reverse=True)
+        return hits[:limit]
 
     def format_feature_explanation(self, feats, score=0.0, constraints=None, contribs=None):
         """

@@ -1,158 +1,101 @@
-# Deployment Guide - AI Appointer Assist
+# Deployment Guide
 
-## Table of Contents
-1. [On-Premise Air-Gapped Deployment](#on-premise-air-gapped-deployment)
-2. [Cloud/Server Deployment](#cloudserver-deployment)
-3. [Docker Deployment](#docker-deployment)
-4. [Configuration](#configuration)
-5. [Troubleshooting](#troubleshooting)
-
----
-
-## On-Premise Air-Gapped Deployment
+## Local Deployment
 
 ### Prerequisites
-- Linux/Windows server with Python 3.8+
-- No internet access required
-- Minimum 4GB RAM, 10GB disk space
+- Python 3.8+
+- pip package manager
+- 4GB+ RAM recommended
 
-### Step 1: Prepare Deployment Package (On Internet-Connected Machine)
+### Steps
 
+1. **Clone the repository**
 ```bash
-# Download all dependencies
-pip download -r requirements.txt -d wheels/
-
-# Create deployment archive
-tar -czf ai-appointer-deploy.tar.gz \
-    AIAppointer/ \
-    wheels/ \
-    scripts/install.sh \
-    scripts/start.sh \
-    scripts/stop.sh
-```
-
-### Step 2: Transfer to Air-Gapped Server
-- USB drive
-- Secure file transfer
-- Physical media
-
-### Step 3: Install on Air-Gapped Server
-
-```bash
-# Extract package
-tar -xzf ai-appointer-deploy.tar.gz
+git clone https://github.com/yourusername/AIAppointer.git
 cd AIAppointer
-
-# Run installation script
-chmod +x scripts/install.sh
-./scripts/install.sh
 ```
 
-### Step 4: Configure
-
+2. **Create virtual environment** (recommended)
 ```bash
-# Copy environment template
-cp .env.example .env
-
-# Edit configuration
-nano .env
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
 ```
 
-### Step 5: Start Application
-
+3. **Install dependencies**
 ```bash
-# Start the application
-chmod +x scripts/start.sh
-./scripts/start.sh
-
-# Application will be available at http://localhost:8501
+pip install -r requirements.txt
 ```
 
-### Step 6: Stop Application
+4. **Prepare data**
+- Place your dataset in `data/` directory
+- Update `config.py` with correct data path
 
+5. **Run the application**
 ```bash
-chmod +x scripts/stop.sh
-./scripts/stop.sh
+streamlit run src/app.py
 ```
+
+6. **Access the app**
+Open browser at `http://localhost:8501`
 
 ---
 
-## Cloud/Server Deployment
+## Streamlit Cloud Deployment
 
-### Option 1: Direct Deployment
+### Prerequisites
+- GitHub account
+- Streamlit Cloud account (free at streamlit.io/cloud)
 
+### Steps
+
+1. **Push to GitHub**
 ```bash
-# Clone repository
-git clone <repository-url>
-cd AIAppointer
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Configure
-cp .env.example .env
-nano .env
-
-# Train model (if needed)
-python scripts/train_model.py
-
-# Start application
-streamlit run src/app.py --server.port 8501
+git init
+git add .
+git commit -m "Initial commit"
+git remote add origin https://github.com/yourusername/AIAppointer.git
+git push -u origin main
 ```
 
-### Option 2: Systemd Service (Linux)
+2. **Deploy on Streamlit Cloud**
+- Go to [share.streamlit.io](https://share.streamlit.io)
+- Click "New app"
+- Select your repository
+- Set main file path: `src/app.py`
+- Click "Deploy"
 
-Create `/etc/systemd/system/ai-appointer.service`:
+3. **Configure secrets** (if needed)
+- In Streamlit Cloud dashboard, go to app settings
+- Add secrets in TOML format
 
-```ini
-[Unit]
-Description=AI Appointer Assist
-After=network.target
+4. **Monitor deployment**
+- Check logs for any errors
+- App will be live at `https://yourapp.streamlit.app`
 
-[Service]
-Type=simple
-User=appointer
-WorkingDirectory=/opt/AIAppointer
-Environment="PATH=/opt/AIAppointer/venv/bin"
-ExecStart=/opt/AIAppointer/venv/bin/streamlit run src/app.py --server.port 8501
-Restart=always
-
-[Install]
-WantedBy=multi-user.target
-```
-
-Enable and start:
-```bash
-sudo systemctl enable ai-appointer
-sudo systemctl start ai-appointer
-sudo systemctl status ai-appointer
-```
+### Important Notes for Streamlit Cloud
+- Models and data files must be included in repo or loaded from external storage
+- Keep repository size under 1GB
+- Use `.gitignore` to exclude large files
+- Consider using Git LFS for model files
 
 ---
 
 ## Docker Deployment
 
-### Dockerfile
+### Create Dockerfile
 
 ```dockerfile
 FROM python:3.9-slim
 
 WORKDIR /app
 
-# Install dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application
-COPY src/ ./src/
-COPY models/ ./models/
-COPY data/ ./data/
-COPY config.py .
+COPY . .
 
-# Expose port
 EXPOSE 8501
 
-# Run application
 CMD ["streamlit", "run", "src/app.py", "--server.port=8501", "--server.address=0.0.0.0"]
 ```
 
@@ -160,240 +103,110 @@ CMD ["streamlit", "run", "src/app.py", "--server.port=8501", "--server.address=0
 
 ```bash
 # Build image
-docker build -t ai-appointer:latest .
+docker build -t ai-appointer .
 
 # Run container
-docker run -d \
-  -p 8501:8501 \
-  -v $(pwd)/data:/app/data \
-  -v $(pwd)/models:/app/models \
-  --name ai-appointer \
-  ai-appointer:latest
+docker run -p 8501:8501 ai-appointer
 ```
 
-### Docker Compose
+### Docker Compose (Optional)
 
 ```yaml
 version: '3.8'
-
 services:
-  ai-appointer:
+  app:
     build: .
     ports:
       - "8501:8501"
     volumes:
       - ./data:/app/data
       - ./models:/app/models
-    environment:
-      - LOG_LEVEL=INFO
-    restart: unless-stopped
 ```
 
-Run with:
-```bash
-docker-compose up -d
-```
+Run with: `docker-compose up`
 
 ---
 
-## Configuration
+## Production Considerations
 
-### Environment Variables
+### Performance
+- Use caching (`@st.cache_data`, `@st.cache_resource`)
+- Limit concurrent users based on server capacity
+- Consider load balancing for high traffic
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `APPOINTER_DATA_DIR` | Data directory path | `./data` |
-| `DATASET_FILE` | Dataset filename | `hr_data.csv` |
-| `APPOINTER_MODELS_DIR` | Models directory | `./models` |
-| `DEFAULT_RANK_FLEX` | Default rank flexibility | `0` |
-| `UI_TITLE` | Application title | `AI Appointer Assist` |
-| `LOG_LEVEL` | Logging level | `INFO` |
-| `STREAMLIT_SERVER_PORT` | Server port | `8501` |
-| `STREAMLIT_SERVER_ADDRESS` | Server address | `0.0.0.0` |
+### Security
+- Never commit sensitive data or credentials
+- Use environment variables for configuration
+- Implement authentication if needed
+- Keep dependencies updated
 
-### config.py
+### Monitoring
+- Set up logging
+- Monitor resource usage (CPU, RAM)
+- Track prediction latency
+- Monitor model performance drift
 
-Edit `config.py` for advanced configuration:
-- Dataset paths
-- Model parameters
-- UI customization
-- Feature engineering settings
-
----
-
-## Security Considerations
-
-### Production Checklist
-- [ ] Change default ports
-- [ ] Enable HTTPS (use reverse proxy like Nginx)
-- [ ] Set up authentication (Streamlit supports basic auth)
-- [ ] Configure firewall rules
-- [ ] Enable audit logging
-- [ ] Regular backups of models and data
-- [ ] Keep dependencies updated
-
-### HTTPS Setup (Nginx)
-
-```nginx
-server {
-    listen 443 ssl;
-    server_name appointer.yourdomain.com;
-
-    ssl_certificate /path/to/cert.pem;
-    ssl_certificate_key /path/to/key.pem;
-
-    location / {
-        proxy_pass http://localhost:8501;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
-        proxy_set_header Host $host;
-    }
-}
-```
+### Backup
+- Regular backups of models and data
+- Version control for models
+- Document model training procedures
 
 ---
 
 ## Troubleshooting
 
-### Application Won't Start
+### Common Issues
 
-**Check Python version**:
-```bash
-python --version  # Should be 3.8+
-```
+**Issue**: Module not found errors
+**Solution**: Ensure all dependencies are installed: `pip install -r requirements.txt`
 
-**Check dependencies**:
-```bash
-pip list | grep streamlit
-```
+**Issue**: Model files not loading
+**Solution**: Check paths in `config.py` and ensure models exist in `models/` directory
 
-**Check logs**:
-```bash
-tail -f logs/appointer.log
-```
+**Issue**: Out of memory errors
+**Solution**: Reduce batch size, limit data loading, or increase server RAM
 
-### Model Not Found
-
-**Verify models directory**:
-```bash
-ls -la models/
-# Should contain: lgbm_model.pkl, all_constraints.json, etc.
-```
-
-**Retrain if needed**:
-```bash
-python scripts/train_model.py
-```
-
-### Port Already in Use
-
-**Change port in .env**:
-```bash
-STREAMLIT_SERVER_PORT=8502
-```
-
-Or kill existing process:
-```bash
-# Linux
-lsof -ti:8501 | xargs kill -9
-
-# Windows
-netstat -ano | findstr :8501
-taskkill /PID <PID> /F
-```
-
-### Performance Issues
-
-**Increase resources**:
-- RAM: Minimum 4GB recommended
-- CPU: 2+ cores recommended
-
-**Optimize dataset**:
-- Reduce dataset size if too large
-- Use sampling for development
+**Issue**: Slow predictions
+**Solution**: Check if models are cached properly, optimize feature engineering
 
 ---
 
-## Monitoring
+## Environment Variables
 
-### Health Check Endpoint
+Create `.streamlit/secrets.toml` for sensitive configuration:
 
-Streamlit provides health check at:
+```toml
+[general]
+data_path = "/path/to/data"
+model_path = "/path/to/models"
+
+[database]
+host = "localhost"
+port = 5432
 ```
-http://localhost:8501/healthz
-```
 
-### Logs
-
-Application logs location:
-- Development: Console output
-- Production: `logs/appointer.log`
-
-Enable verbose logging:
-```bash
-export LOG_LEVEL=DEBUG
+Access in code:
+```python
+import streamlit as st
+data_path = st.secrets["general"]["data_path"]
 ```
 
 ---
 
-## Backup and Recovery
+## Scaling
 
-### Backup
-
-```bash
-# Backup models
-tar -czf models-backup-$(date +%Y%m%d).tar.gz models/
-
-# Backup data
-tar -czf data-backup-$(date +%Y%m%d).tar.gz data/
-```
-
-### Restore
-
-```bash
-# Restore models
-tar -xzf models-backup-YYYYMMDD.tar.gz
-
-# Restore data
-tar -xzf data-backup-YYYYMMDD.tar.gz
-```
-
----
-
-## Upgrading
-
-### From Git
-
-```bash
-# Backup current version
-cp -r AIAppointer AIAppointer.backup
-
-# Pull updates
-cd AIAppointer
-git pull origin main
-
-# Update dependencies
-pip install -r requirements.txt --upgrade
-
-# Restart application
-./scripts/stop.sh
-./scripts/start.sh
-```
-
-### Manual Upgrade
-
-1. Backup current installation
-2. Download new version
-3. Copy `models/` and `data/` from backup
-4. Update configuration
-5. Restart application
+For high-traffic deployments:
+1. Use a dedicated server or cloud platform
+2. Implement caching strategies
+3. Consider horizontal scaling with load balancer
+4. Use CDN for static assets
+5. Optimize database queries if applicable
 
 ---
 
 ## Support
 
-For issues and questions:
-- Check logs: `logs/appointer.log`
-- Review documentation: `docs/`
-- GitHub Issues: [repository-url]/issues
+For deployment issues:
+- Check [Streamlit documentation](https://docs.streamlit.io)
+- Open an issue on GitHub
+- Review logs for error messages

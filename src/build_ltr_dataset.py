@@ -7,6 +7,7 @@ import joblib
 from feature_engineering import FeatureEngineer
 from data_processor import DataProcessor
 from features_ltr import LTRFeatureEngineer
+from markov_engine import MarkovSequenceEngine, extract_career_sequences
 import sys
 
 # Add root
@@ -110,6 +111,15 @@ def build_dataset(csv_path=None, output_dir='data/ltr'):
         
     print("Transition Stats Computed.")
     
+    # 3.5. Build Markov Sequence Engine (NEW)
+    print("Building Markov Sequence Engine...")
+    career_sequences = extract_career_sequences(df_raw)
+    print(f"Extracted {len(career_sequences)} career sequences from {len(df_raw)} officers")
+    
+    markov_engine = MarkovSequenceEngine(max_order=3, smoothing_alpha=0.01)
+    markov_engine.fit(career_sequences)
+    print("✓ Markov Engine Built.")
+    
     # 4. Initialize LTR Feature Engineer
     ltr_fe = LTRFeatureEngineer()
     print("Fitting Vectorizers...")
@@ -134,7 +144,7 @@ def build_dataset(csv_path=None, output_dir='data/ltr'):
             
         # Feature Vector: Positive
         pos_cand = role_meta[target_role]
-        pos_feats = ltr_fe.generate_pair_features(officer_state, pos_cand, transition_stats)
+        pos_feats = ltr_fe.generate_pair_features(officer_state, pos_cand, transition_stats, markov_engine)
         
         X_rows.append(pos_feats)
         y.append(1)
@@ -158,7 +168,7 @@ def build_dataset(csv_path=None, output_dir='data/ltr'):
             attempts += 1
             
         for neg_cand in neg_candidates:
-            neg_feats = ltr_fe.generate_pair_features(officer_state, neg_cand, transition_stats)
+            neg_feats = ltr_fe.generate_pair_features(officer_state, neg_cand, transition_stats, markov_engine)
             X_rows.append(neg_feats)
             y.append(0)
             groups.append(idx)
@@ -178,6 +188,7 @@ def build_dataset(csv_path=None, output_dir='data/ltr'):
     # Save Artifacts
     joblib.dump(role_meta, os.path.join(output_dir, 'role_meta.pkl'))
     joblib.dump(transition_stats, os.path.join(output_dir, 'transition_stats.pkl'))
+    markov_engine.save(os.path.join(output_dir, 'markov_stats.pkl'))
     ltr_fe.save(os.path.join(output_dir, 'ltr_fe.pkl'))
     
     print("✓ Dataset & Artifacts Saved.")

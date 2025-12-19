@@ -97,7 +97,7 @@ def train_ltr(data_path='data/ltr/train_pairs.csv', model_dir='models/ltr'):
     
     # Save Metrics
     import json
-    metrics = {'accuracy': acc, 'auc': score}
+    metrics = {'accuracy': acc, 'auc': auc}
     with open(os.path.join(model_dir, 'metrics.json'), 'w') as f:
         json.dump(metrics, f)
     

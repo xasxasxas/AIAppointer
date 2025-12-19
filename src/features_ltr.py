@@ -36,7 +36,7 @@ class LTRFeatureEngineer:
         except:
             return 0.0
             
-    def generate_pair_features(self, officer_row, candidate_row, transition_stats=None):
+    def generate_pair_features(self, officer_row, candidate_row, transition_stats=None, markov_engine=None):
         """
         Generate a feature dictionary for a single (Officer, Candidate) pair.
         
@@ -132,7 +132,64 @@ class LTRFeatureEngineer:
                 if curr_title in title_matrix:
                     feats['prior_title_prob'] = title_matrix[curr_title].get(tgt_title, 0.0)
         
+        # 6. Markov Sequential Features (NEW)
+        feats['markov_2nd_order_prob'] = 0.0
+        feats['markov_3rd_order_prob'] = 0.0
+        feats['markov_avg_prob'] = 0.0
+        
+        if markov_engine:
+            # Extract career history from officer data
+            career_history = self._extract_career_history(officer_row)
+            
+            if len(career_history) >= 1:
+                # Get Markov probabilities for the target role
+                markov_probs = markov_engine.predict_proba(
+                    career_history, 
+                    candidate_roles=[tgt_title]
+                )
+                
+                # Get diagnostic info to determine which order was used
+                info = markov_engine.get_transition_info(career_history)
+                order_used = info['order_used']
+                
+                # Assign probabilities based on order used
+                if order_used >= 2:
+                    feats['markov_2nd_order_prob'] = markov_probs.get(tgt_title, 0.0)
+                
+                if order_used >= 3:
+                    feats['markov_3rd_order_prob'] = markov_probs.get(tgt_title, 0.0)
+                
+                # Average probability (always available)
+                feats['markov_avg_prob'] = markov_probs.get(tgt_title, 0.0)
+        
         return feats
+    
+    def _extract_career_history(self, officer_row):
+        """
+        Extract ordered list of past roles from officer data.
+        
+        Returns:
+            List of role titles in chronological order
+        """
+        # Try to get from snapshot_history first (most complete)
+        if 'snapshot_history' in officer_row and officer_row['snapshot_history']:
+            history = [h.get('title', '') for h in officer_row['snapshot_history'] if h.get('title')]
+            if history:
+                return history
+        
+        # Fallback: construct from last_role_title and current_appointment
+        history = []
+        if 'last_role_title' in officer_row and officer_row['last_role_title']:
+            last_role = officer_row['last_role_title']
+            if last_role and last_role != 'Unknown':
+                history.append(last_role)
+        
+        if 'current_appointment' in officer_row:
+            curr_role = officer_row['current_appointment']
+            if curr_role and curr_role not in history:
+                history.append(curr_role)
+        
+        return history
 
     def save(self, path):
         joblib.dump(self.tfidf, path)
@@ -140,7 +197,7 @@ class LTRFeatureEngineer:
     def load(self, path):
         self.tfidf = joblib.load(path)
 
-    def transform(self, pairs_df, transition_stats=None):
+    def transform(self, pairs_df, transition_stats=None, markov_engine=None):
         """
         Batch transform a DataFrame of items into features.
         Used for Global SHAP context generation.
@@ -152,7 +209,9 @@ class LTRFeatureEngineer:
             officer_row = row.to_dict()
             candidate_row = row.to_dict() # Same row carries the target info
             
-            feats = self.generate_pair_features(officer_row, candidate_row, transition_stats=transition_stats)
+            feats = self.generate_pair_features(officer_row, candidate_row, 
+                                               transition_stats=transition_stats,
+                                               markov_engine=markov_engine)
             features_list.append(feats)
             
         return pd.DataFrame(features_list)

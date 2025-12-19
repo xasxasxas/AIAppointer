@@ -6,6 +6,7 @@ import os
 from src.data_processor import DataProcessor
 from src.feature_engineering import FeatureEngineer
 from src.features_ltr import LTRFeatureEngineer
+from src.markov_engine import MarkovSequenceEngine
 from src.xai import ModelExplainer  # Import XAI
 
 # RANK ORDER for Heuristics
@@ -50,6 +51,15 @@ class Predictor:
             except:
                 print("⚠️ Transition Stats NOT Found. LTR will run without priors.")
                 self.transition_stats = None
+            
+            # Load Markov Engine
+            try:
+                self.markov_engine = MarkovSequenceEngine()
+                self.markov_engine.load(os.path.join(models_dir, 'markov_stats.pkl'))
+                print("✓ Markov Engine Loaded.")
+            except:
+                print("⚠️ Markov Engine NOT Found. LTR will run without Markov features.")
+                self.markov_engine = None
             
             # Load Strict Constraints (Ground Truth)
             import json
@@ -136,7 +146,9 @@ class Predictor:
             if not pairs:
                  return None
                  
-            X_df = self.ltr_fe.transform(pd.DataFrame(pairs), transition_stats=self.transition_stats)
+            X_df = self.ltr_fe.transform(pd.DataFrame(pairs), 
+                                         transition_stats=self.transition_stats,
+                                         markov_engine=self.markov_engine)
             
             # Ensure columns match model
             # Reindex to match self.feature_cols
@@ -336,7 +348,7 @@ class Predictor:
         feats_list = []
         
         for cand in candidates_to_score:
-            feats = self.ltr_fe.generate_pair_features(officer, cand, self.transition_stats)
+            feats = self.ltr_fe.generate_pair_features(officer, cand, self.transition_stats, self.markov_engine)
             
             # Inject Context for Explainability
             # Calculate simple Entry Match for display (using strict constraints fallback logic)
@@ -401,23 +413,22 @@ class Predictor:
                 print(f"⚠️ Batch XAI Score Failed: {e}")
                 # Fallback to raw_scores
         
-        # --- SOFTMAX NORMALIZATION ---
-        # Instead of independent Sigmoid (which leads to 50% monotony),
-        # we use Softmax to force a probability distribution across the valid candidates.
-        # This highlights the relative best structure.
-        
-        # 1. Shift for stability
-        max_score = np.max(raw_scores)
-        shifted_scores = raw_scores - max_score
-        
-        # 2. Temperature scaling (Variable logic: sharper if high variation)
-        # We use T=1.0 standard, or T < 1 to sharpen.
-        # Let's use T=0.5 to highlight top picks more.
-        temperature = 0.5
-        exp_scores = np.exp(shifted_scores / temperature)
-        
-        # 3. Normalize
-        scores = exp_scores / np.sum(exp_scores)
+        # Min-Max Normalization to guarantee meaningful scores
+        # This ensures the best candidate gets high score and worst gets low but non-zero
+        if len(raw_scores) > 1:
+            min_score = np.min(raw_scores)
+            max_score = np.max(raw_scores)
+            score_range = max_score - min_score
+            
+            if score_range > 0:
+                # Normalize to 0.1-0.9 range to avoid extremes
+                scores = 0.1 + 0.8 * (raw_scores - min_score) / score_range
+            else:
+                # All scores identical - give them all 0.5
+                scores = np.full_like(raw_scores, 0.5)
+        else:
+            # Single candidate - give moderate score
+            scores = np.array([0.5])
 
         
         # 3. Rank and Format
@@ -530,7 +541,7 @@ class Predictor:
                 self._prepare_input_context(off_dict) # In-place enrich
             except:
                 pass # Use raw if fails
-            feats = self.ltr_fe.generate_pair_features(off_dict, cand_meta, self.transition_stats)
+            feats = self.ltr_fe.generate_pair_features(off_dict, cand_meta, self.transition_stats, self.markov_engine)
             
             # Inject Context for Explainability
             feats['_Context'] = {
@@ -558,8 +569,44 @@ class Predictor:
         # Predict Raw Scores
         raw_scores = self.model.predict(X_rows)
         
-        # Normalize
-        scores = 1 / (1 + np.exp(-raw_scores))
+        # --- XAI-DRIVEN SCORING (Consistency with Predict) ---
+        if self.xai:
+            try:
+                # Convert to DF for SHAP Batch
+                X_df = pd.DataFrame(X_rows, columns=self.feature_cols)
+                
+                # Fast Batch SHAP
+                shap_matrix = self.xai.explainer.shap_values(X_df)
+                
+                if isinstance(shap_matrix, list):
+                    shap_matrix = shap_matrix[1] # Positive Class
+                    
+                base_val = self.xai.explainer.expected_value
+                if isinstance(base_val, list): base_val = base_val[1]
+                
+                shap_scores = np.sum(shap_matrix, axis=1) + base_val
+                
+                # Use SHAP scores
+                raw_scores = shap_scores
+            except Exception as e:
+                print(f"⚠️ Batch XAI Score Failed in Billet Lookup: {e}")
+
+        # Min-Max Normalization to guarantee meaningful scores
+        # This ensures the best candidate gets high score and worst gets low but non-zero
+        if len(raw_scores) > 1:
+            min_score = np.min(raw_scores)
+            max_score = np.max(raw_scores)
+            score_range = max_score - min_score
+            
+            if score_range > 0:
+                # Normalize to 0.1-0.9 range to avoid extremes
+                scores = 0.1 + 0.8 * (raw_scores - min_score) / score_range
+            else:
+                # All scores identical - give them all 0.5
+                scores = np.full_like(raw_scores, 0.5)
+        else:
+            # Single candidate - give moderate score
+            scores = np.array([0.5])
         
         out = []
         for i, score in enumerate(scores):
@@ -567,20 +614,20 @@ class Predictor:
             row = candidates_df.loc[orig_idx]
             feat_dict = feats_list[i]
             
-            if score > 0.01: # 1% threshold to filter noise
-                # Extract current role from enriched context or raw row
-                curr_role = off_dict.get('current_appointment', off_dict.get('last_role_title', 'Unknown'))
-                
-                out.append({
-                    'Employee_ID': row['Employee_ID'],
-                    'Name': f"Officer {row['Employee_ID']}",
-                    'Rank': row['Rank'],
-                    'Branch': row['Branch'],
-                    'CurrentRole': curr_role,
-                    'Confidence': score,
-                    'Explanation': f"Match Probability: {score:.1%}",
-                    '_Feats': feat_dict 
-                })
+            # REMOVED THRESHOLD FILTER to ensure we always return candidates.
+            # Extract current role from enriched context or raw row
+            curr_role = off_dict.get('current_appointment', off_dict.get('last_role_title', 'Unknown'))
+            
+            out.append({
+                'Employee_ID': row['Employee_ID'],
+                'Name': f"Officer {row['Employee_ID']}",
+                'Rank': row['Rank'],
+                'Branch': row['Branch'],
+                'CurrentRole': curr_role,
+                'Confidence': score,
+                'Explanation': f"Match Probability: {score:.1%}",
+                '_Feats': feat_dict 
+            })
         
         if not out:
              return pd.DataFrame(columns=['Employee_ID', 'Name', 'Rank', 'Branch', 'CurrentRole', 'Confidence', 'Explanation'])

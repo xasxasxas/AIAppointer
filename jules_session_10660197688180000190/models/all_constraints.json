@@ -1,0 +1,1689 @@
+{
+  "Instructor -": {
+    "ranks": [
+      "Lieutenant",
+      "Lieutenant Commander"
+    ],
+    "branches": [
+      "Tactical Systems",
+      "Engineering",
+      "Hull Systems",
+      "Science"
+    ],
+    "pools": [
+      "Near Earth",
+      "Deep Space",
+      "Galactic",
+      "Planetary Surface"
+    ]
+  },
+  "Dy Manager": {
+    "ranks": [
+      "Lieutenant",
+      "Lieutenant Commander"
+    ],
+    "branches": [
+      "Tactical Systems",
+      "Engineering",
+      "Hull Systems"
+    ],
+    "pools": [
+      "Near Earth",
+      "Galactic",
+      "Planetary Surface",
+      "Deep Space"
+    ]
+  },
+  "Asst Manager": {
+    "ranks": [
+      "Lieutenant"
+    ],
+    "branches": [
+      "Engineering",
+      "Tactical Systems",
+      "Hull Systems"
+    ],
+    "pools": [
+      "Near Earth",
+      "Deep Space",
+      "Planetary Surface",
+      "Galactic"
+    ]
+  },
+  "Staff Officer SFHQ - Resource Management": {
+    "ranks": [
+      "Lieutenant",
+      "Lieutenant Commander"
+    ],
+    "branches": [
+      "Tactical Systems",
+      "Engineering",
+      "Hull Systems"
+    ],
+    "pools": [
+      "Galactic",
+      "Deep Space",
+      "Planetary Surface",
+      "Near Earth"
+    ]
+  },
+  "Staff Officer SFHQ - Strategic Planning": {
+    "ranks": [
+      "Lieutenant",
+      "Lieutenant Commander"
+    ],
+    "branches": [
+      "Engineering",
+      "Tactical Systems",
+      "Hull Systems"
+    ],
+    "pools": [
+      "Deep Space",
+      "Galactic",
+      "Planetary Surface",
+      "Near Earth"
+    ]
+  },
+  "Staff Officer SFHQ - Capability Planning": {
+    "ranks": [
+      "Lieutenant",
+      "Lieutenant Commander"
+    ],
+    "branches": [
+      "Engineering",
+      "Tactical Systems"
+    ],
+    "pools": [
+      "Deep Space",
+      "Planetary Surface",
+      "Near Earth",
+      "Galactic"
+    ]
+  },
+  "Asst Manager Planetary Repair Depot One": {
+    "ranks": [
+      "Lieutenant"
+    ],
+    "branches": [
+      "Tactical Systems",
+      "Engineering"
+    ],
+    "pools": [
+      "Deep Space",
+      "Near Earth",
+      "Planetary Surface",
+      "Galactic"
+    ]
+  },
+  "Staff Officer SFHQ - Operations Analysis": {
+    "ranks": [
+      "Lieutenant"
+    ],
+    "branches": [
+      "Tactical Systems",
+      "Hull Systems",
+      "Engineering"
+    ],
+    "pools": [
+      "Planetary Surface",
+      "Near Earth"
+    ]
+  },
+  "Staff Officer SFHQ - Systems Integration": {
+    "ranks": [
+      "Lieutenant",
+      "Lieutenant Commander"
+    ],
+    "branches": [
+      "Hull Systems",
+      "Engineering"
+    ],
+    "pools": [
+      "Near Earth",
+      "Galactic",
+      "Deep Space"
+    ]
+  },
+  "Asst Manager Hull Repair Yard Beta": {
+    "ranks": [
+      "Lieutenant"
+    ],
+    "branches": [
+      "Engineering",
+      "Tactical Systems",
+      "Hull Systems"
+    ],
+    "pools": [
+      "Near Earth",
+      "Deep Space",
+      "Galactic"
+    ]
+  },
+  "Dy Manager Planetary Repair Depot One": {
+    "ranks": [
+      "Lieutenant",
+      "Lieutenant Commander"
+    ],
+    "branches": [
+      "Tactical Systems",
+      "Engineering"
+    ],
+    "pools": [
+      "Near Earth",
+      "Galactic",
+      "Deep Space"
+    ]
+  },
+  "Dy Manager Hull Repair Yard Beta": {
+    "ranks": [
+      "Lieutenant",
+      "Lieutenant Commander"
+    ],
+    "branches": [
+      "Tactical Systems",
+      "Engineering",
+      "Hull Systems",
+      "Science"
+    ],
+    "pools": [
+      "Planetary Surface",
+      "Near Earth",
+      "Galactic",
+      "Deep Space"
+    ]
+  },
+  "Head of Deptt": {
+    "ranks": [
+      "Lieutenant Commander"
+    ],
+    "branches": [
+      "Engineering",
+      "Tactical Systems"
+    ],
+    "pools": [
+      "Planetary Surface",
+      "Near Earth",
+      "Deep Space",
+      "Galactic"
+    ]
+  },
+  "Staff Officer SFHQ - Technical Policy": {
+    "ranks": [
+      "Lieutenant",
+      "Lieutenant Commander"
+    ],
+    "branches": [
+      "Engineering",
+      "Tactical Systems",
+      "Hull Systems"
+    ],
+    "pools": [
+      "Near Earth",
+      "Planetary Surface",
+      "Deep Space",
+      "Galactic"
+    ]
+  },
+  "Staff Officer": {
+    "ranks": [
+      "Lieutenant",
+      "Commander",
+      "Lieutenant Commander"
+    ],
+    "branches": [
+      "Engineering",
+      "Tactical Systems",
+      "Hull Systems",
+      "Science"
+    ],
+    "pools": [
+      "Deep Space",
+      "Galactic",
+      "Planetary Surface",
+      "Near Earth"
+    ]
+  },
+  "Staff Officer R&D - Hull Integrity": {
+    "ranks": [
+      "Lieutenant Commander",
+      "Lieutenant"
+    ],
+    "branches": [
+      "Hull Systems",
+      "Science"
+    ],
+    "pools": [
+      "Planetary Surface",
+      "Deep Space",
+      "Near Earth"
+    ]
+  },
+  "Dy Manager Planetary Repair Depot Two": {
+    "ranks": [
+      "Lieutenant",
+      "Lieutenant Commander"
+    ],
+    "branches": [
+      "Tactical Systems",
+      "Engineering",
+      "Hull Systems"
+    ],
+    "pools": [
+      "Galactic",
+      "Planetary Surface",
+      "Near Earth"
+    ]
+  },
+  "Staff Officer SFHQ - Doctrine and Development": {
+    "ranks": [
+      "Lieutenant",
+      "Lieutenant Commander"
+    ],
+    "branches": [
+      "Hull Systems",
+      "Tactical Systems",
+      "Engineering"
+    ],
+    "pools": [
+      "Near Earth",
+      "Planetary Surface",
+      "Deep Space",
+      "Galactic"
+    ]
+  },
+  "Dy Manager Hull Repair Yard Alpha": {
+    "ranks": [
+      "Lieutenant Commander",
+      "Lieutenant"
+    ],
+    "branches": [
+      "Hull Systems",
+      "Engineering",
+      "Tactical Systems"
+    ],
+    "pools": [
+      "Near Earth",
+      "Galactic",
+      "Planetary Surface",
+      "Deep Space"
+    ]
+  },
+  "Staff Officer SFHQ -": {
+    "ranks": [
+      "Lieutenant",
+      "Lieutenant Commander"
+    ],
+    "branches": [
+      "Hull Systems",
+      "Tactical Systems",
+      "Engineering"
+    ],
+    "pools": [
+      "Near Earth",
+      "Planetary Surface",
+      "Deep Space"
+    ]
+  },
+  "Staff Officer R&D - Propulsion Systems": {
+    "ranks": [
+      "Lieutenant Commander",
+      "Lieutenant"
+    ],
+    "branches": [
+      "Engineering",
+      "Hull Systems",
+      "Science"
+    ],
+    "pools": [
+      "Deep Space",
+      "Near Earth",
+      "Galactic"
+    ]
+  },
+  "Asst Manager Hull Repair Yard Alpha": {
+    "ranks": [
+      "Lieutenant"
+    ],
+    "branches": [
+      "Tactical Systems",
+      "Engineering",
+      "Hull Systems"
+    ],
+    "pools": [
+      "Galactic",
+      "Deep Space",
+      "Planetary Surface",
+      "Near Earth"
+    ]
+  },
+  "Staff Officer R&D - Sensors and Communications": {
+    "ranks": [
+      "Lieutenant Commander"
+    ],
+    "branches": [
+      "Engineering",
+      "Hull Systems",
+      "Science"
+    ],
+    "pools": [
+      "Near Earth",
+      "Galactic",
+      "Planetary Surface"
+    ]
+  },
+  "Staff Officer R&D - Nanotech Repair": {
+    "ranks": [
+      "Lieutenant Commander",
+      "Lieutenant"
+    ],
+    "branches": [
+      "Engineering",
+      "Hull Systems"
+    ],
+    "pools": [
+      "Deep Space",
+      "Galactic"
+    ]
+  },
+  "Staff Officer R&D - Deflector Shields": {
+    "ranks": [
+      "Lieutenant Commander",
+      "Lieutenant"
+    ],
+    "branches": [
+      "Tactical Systems",
+      "Hull Systems"
+    ],
+    "pools": [
+      "Deep Space",
+      "Near Earth"
+    ]
+  },
+  "Asst Manager Planetary Repair Depot Two": {
+    "ranks": [
+      "Lieutenant"
+    ],
+    "branches": [
+      "Engineering",
+      "Tactical Systems",
+      "Hull Systems"
+    ],
+    "pools": [
+      "Deep Space",
+      "Planetary Surface",
+      "Near Earth"
+    ]
+  },
+  "Training Officer -": {
+    "ranks": [
+      "Lieutenant Commander",
+      "Commander"
+    ],
+    "branches": [
+      "Engineering",
+      "Hull Systems",
+      "Tactical Systems",
+      "Science"
+    ],
+    "pools": [
+      "Near Earth",
+      "Deep Space",
+      "Galactic",
+      "Planetary Surface"
+    ]
+  },
+  "Staff Officer R&D - Structural Materials": {
+    "ranks": [
+      "Lieutenant",
+      "Lieutenant Commander"
+    ],
+    "branches": [
+      "Hull Systems",
+      "Science"
+    ],
+    "pools": [
+      "Planetary Surface",
+      "Near Earth"
+    ]
+  },
+  "Staff Officer R&D - Energy Systems": {
+    "ranks": [
+      "Lieutenant",
+      "Lieutenant Commander"
+    ],
+    "branches": [
+      "Hull Systems",
+      "Science"
+    ],
+    "pools": [
+      "Planetary Surface",
+      "Deep Space",
+      "Near Earth"
+    ]
+  },
+  "Staff Officer R&D - Tactical AI": {
+    "ranks": [
+      "Lieutenant",
+      "Lieutenant Commander"
+    ],
+    "branches": [
+      "Hull Systems",
+      "Science"
+    ],
+    "pools": [
+      "Galactic",
+      "Near Earth"
+    ]
+  },
+  "Staff Officer R&D - Stealth Systems": {
+    "ranks": [
+      "Lieutenant Commander"
+    ],
+    "branches": [
+      "Hull Systems",
+      "Science"
+    ],
+    "pools": [
+      "Planetary Surface",
+      "Near Earth",
+      "Deep Space"
+    ]
+  },
+  "Staff Officer R&D - Plasma Systems": {
+    "ranks": [
+      "Lieutenant",
+      "Lieutenant Commander"
+    ],
+    "branches": [
+      "Hull Systems",
+      "Science"
+    ],
+    "pools": [
+      "Galactic",
+      "Near Earth"
+    ]
+  },
+  "Manager": {
+    "ranks": [
+      "Commander"
+    ],
+    "branches": [
+      "Tactical Systems",
+      "Engineering",
+      "Hull Systems",
+      "Science"
+    ],
+    "pools": [
+      "Galactic",
+      "Planetary Surface",
+      "Deep Space",
+      "Near Earth"
+    ]
+  },
+  "Manager Planetary Repair Depot One": {
+    "ranks": [
+      "Commander"
+    ],
+    "branches": [
+      "Engineering",
+      "Tactical Systems",
+      "Hull Systems"
+    ],
+    "pools": [
+      "Planetary Surface",
+      "Near Earth",
+      "Galactic",
+      "Deep Space"
+    ]
+  },
+  "Dy Director R&D - Stealth Systems": {
+    "ranks": [
+      "Commander"
+    ],
+    "branches": [
+      "Hull Systems",
+      "Tactical Systems",
+      "Engineering",
+      "Science"
+    ],
+    "pools": [
+      "Galactic",
+      "Planetary Surface",
+      "Near Earth"
+    ]
+  },
+  "Dy Director R&D -": {
+    "ranks": [
+      "Commander"
+    ],
+    "branches": [
+      "Engineering",
+      "Tactical Systems",
+      "Science"
+    ],
+    "pools": [
+      "Planetary Surface",
+      "Near Earth",
+      "Deep Space"
+    ]
+  },
+  "Manager Planetary Repair Depot Two": {
+    "ranks": [
+      "Commander"
+    ],
+    "branches": [
+      "Engineering",
+      "Hull Systems",
+      "Tactical Systems"
+    ],
+    "pools": [
+      "Deep Space",
+      "Planetary Surface",
+      "Galactic",
+      "Near Earth"
+    ]
+  },
+  "Dy Director R&D - Plasma Systems": {
+    "ranks": [
+      "Commander"
+    ],
+    "branches": [
+      "Tactical Systems",
+      "Engineering",
+      "Science"
+    ],
+    "pools": [
+      "Planetary Surface",
+      "Deep Space",
+      "Near Earth"
+    ]
+  },
+  "Dy Director R&D - Sensors and Communications": {
+    "ranks": [
+      "Commander"
+    ],
+    "branches": [
+      "Engineering",
+      "Tactical Systems",
+      "Hull Systems",
+      "Science"
+    ],
+    "pools": [
+      "Deep Space",
+      "Planetary Surface",
+      "Near Earth",
+      "Galactic"
+    ]
+  },
+  "Dy Director SFHQ - Capability Planning": {
+    "ranks": [
+      "Commander"
+    ],
+    "branches": [
+      "Tactical Systems",
+      "Engineering"
+    ],
+    "pools": [
+      "Deep Space",
+      "Planetary Surface",
+      "Near Earth"
+    ]
+  },
+  "Dy Director SFHQ - Technical Policy": {
+    "ranks": [
+      "Commander"
+    ],
+    "branches": [
+      "Tactical Systems",
+      "Engineering"
+    ],
+    "pools": [
+      "Planetary Surface",
+      "Near Earth"
+    ]
+  },
+  "Manager Hull Repair Yard Beta": {
+    "ranks": [
+      "Commander"
+    ],
+    "branches": [
+      "Tactical Systems",
+      "Engineering",
+      "Hull Systems"
+    ],
+    "pools": [
+      "Planetary Surface",
+      "Near Earth",
+      "Deep Space"
+    ]
+  },
+  "Dy Director SFHQ - Strategic Planning": {
+    "ranks": [
+      "Commander"
+    ],
+    "branches": [
+      "Engineering",
+      "Hull Systems",
+      "Tactical Systems"
+    ],
+    "pools": [
+      "Near Earth",
+      "Planetary Surface",
+      "Deep Space"
+    ]
+  },
+  "Dy Director SFHQ -": {
+    "ranks": [
+      "Commander"
+    ],
+    "branches": [
+      "Engineering",
+      "Tactical Systems"
+    ],
+    "pools": [
+      "Galactic",
+      "Deep Space",
+      "Near Earth"
+    ]
+  },
+  "Dy Director R&D - Hull Integrity": {
+    "ranks": [
+      "Commander"
+    ],
+    "branches": [
+      "Engineering",
+      "Tactical Systems",
+      "Science"
+    ],
+    "pools": [
+      "Planetary Surface",
+      "Galactic",
+      "Near Earth"
+    ]
+  },
+  "Dy Director SFHQ - Systems Integration": {
+    "ranks": [
+      "Commander"
+    ],
+    "branches": [
+      "Engineering",
+      "Hull Systems",
+      "Tactical Systems"
+    ],
+    "pools": [
+      "Deep Space",
+      "Planetary Surface",
+      "Near Earth",
+      "Galactic"
+    ]
+  },
+  "Manager Hull Repair Yard Alpha": {
+    "ranks": [
+      "Commander"
+    ],
+    "branches": [
+      "Engineering",
+      "Tactical Systems"
+    ],
+    "pools": [
+      "Planetary Surface",
+      "Galactic",
+      "Deep Space",
+      "Near Earth"
+    ]
+  },
+  "Dy Director SFHQ - Resource Management": {
+    "ranks": [
+      "Commander"
+    ],
+    "branches": [
+      "Engineering",
+      "Tactical Systems"
+    ],
+    "pools": [
+      "Planetary Surface",
+      "Galactic",
+      "Near Earth",
+      "Deep Space"
+    ]
+  },
+  "Dy Director R&D - Tactical AI": {
+    "ranks": [
+      "Commander"
+    ],
+    "branches": [
+      "Engineering",
+      "Tactical Systems"
+    ],
+    "pools": [
+      "Galactic",
+      "Planetary Surface",
+      "Near Earth"
+    ]
+  },
+  "Dy Director SFHQ - Doctrine and Development": {
+    "ranks": [
+      "Commander"
+    ],
+    "branches": [
+      "Engineering",
+      "Tactical Systems"
+    ],
+    "pools": [
+      "Planetary Surface",
+      "Near Earth",
+      "Galactic"
+    ]
+  },
+  "Dy Director R&D - Propulsion Systems": {
+    "ranks": [
+      "Commander"
+    ],
+    "branches": [
+      "Tactical Systems",
+      "Engineering",
+      "Science"
+    ],
+    "pools": [
+      "Planetary Surface",
+      "Deep Space",
+      "Near Earth",
+      "Galactic"
+    ]
+  },
+  "Staff Officer R&D -": {
+    "ranks": [
+      "Lieutenant Commander"
+    ],
+    "branches": [
+      "Hull Systems",
+      "Science"
+    ],
+    "pools": [
+      "Planetary Surface",
+      "Near Earth",
+      "Galactic"
+    ]
+  },
+  "Dy Director R&D - Deflector Shields": {
+    "ranks": [
+      "Commander"
+    ],
+    "branches": [
+      "Engineering",
+      "Tactical Systems",
+      "Science"
+    ],
+    "pools": [
+      "Planetary Surface",
+      "Deep Space",
+      "Near Earth"
+    ]
+  },
+  "Dy Director R&D - Nanotech Repair": {
+    "ranks": [
+      "Commander"
+    ],
+    "branches": [
+      "Engineering",
+      "Tactical Systems",
+      "Science"
+    ],
+    "pools": [
+      "Near Earth",
+      "Planetary Surface",
+      "Deep Space"
+    ]
+  },
+  "Dy Director R&D - Quantum Computing": {
+    "ranks": [
+      "Commander"
+    ],
+    "branches": [
+      "Tactical Systems",
+      "Engineering",
+      "Hull Systems",
+      "Science"
+    ],
+    "pools": [
+      "Planetary Surface",
+      "Deep Space",
+      "Near Earth"
+    ]
+  },
+  "Dy Director R&D - Energy Systems": {
+    "ranks": [
+      "Commander"
+    ],
+    "branches": [
+      "Engineering",
+      "Tactical Systems",
+      "Hull Systems",
+      "Science"
+    ],
+    "pools": [
+      "Planetary Surface",
+      "Deep Space",
+      "Near Earth"
+    ]
+  },
+  "Dy Director SFHQ - Operations Analysis": {
+    "ranks": [
+      "Commander"
+    ],
+    "branches": [
+      "Engineering",
+      "Tactical Systems",
+      "Hull Systems"
+    ],
+    "pools": [
+      "Near Earth",
+      "Planetary Surface",
+      "Galactic"
+    ]
+  },
+  "Dy Director R&D - Structural Materials": {
+    "ranks": [
+      "Commander"
+    ],
+    "branches": [
+      "Tactical Systems",
+      "Engineering",
+      "Science"
+    ],
+    "pools": [
+      "Galactic",
+      "Planetary Surface",
+      "Near Earth"
+    ]
+  },
+  "Director SFHQ - Doctrine and Development": {
+    "ranks": [
+      "Captain"
+    ],
+    "branches": [
+      "Engineering",
+      "Tactical Systems"
+    ],
+    "pools": [
+      "Planetary Surface",
+      "Deep Space",
+      "Near Earth"
+    ]
+  },
+  "Director R&D - Quantum Computing": {
+    "ranks": [
+      "Captain"
+    ],
+    "branches": [
+      "Tactical Systems",
+      "Engineering"
+    ],
+    "pools": [
+      "Near Earth",
+      "Planetary Surface"
+    ]
+  },
+  "Snr Staff Officer": {
+    "ranks": [
+      "Captain"
+    ],
+    "branches": [
+      "Tactical Systems",
+      "Engineering",
+      "Hull Systems",
+      "Science"
+    ],
+    "pools": [
+      "Planetary Surface",
+      "Galactic",
+      "Near Earth",
+      "Deep Space"
+    ]
+  },
+  "Director": {
+    "ranks": [
+      "Captain"
+    ],
+    "branches": [
+      "Tactical Systems",
+      "Engineering",
+      "Hull Systems"
+    ],
+    "pools": [
+      "Planetary Surface",
+      "Galactic",
+      "Deep Space",
+      "Near Earth"
+    ]
+  },
+  "General Manager Planetary Repair Depot One": {
+    "ranks": [
+      "Captain"
+    ],
+    "branches": [
+      "Engineering",
+      "Tactical Systems"
+    ],
+    "pools": [
+      "Deep Space",
+      "Near Earth"
+    ]
+  },
+  "General Manager Hull Repair Yard Beta": {
+    "ranks": [
+      "Captain"
+    ],
+    "branches": [
+      "Engineering"
+    ],
+    "pools": [
+      "Planetary Surface",
+      "Near Earth"
+    ]
+  },
+  "Director SFHQ -": {
+    "ranks": [
+      "Captain"
+    ],
+    "branches": [
+      "Tactical Systems",
+      "Engineering"
+    ],
+    "pools": [
+      "Galactic",
+      "Planetary Surface",
+      "Near Earth",
+      "Deep Space"
+    ]
+  },
+  "Director Planetary Repair Depot One": {
+    "ranks": [
+      "Captain"
+    ],
+    "branches": [
+      "Tactical Systems",
+      "Engineering"
+    ],
+    "pools": [
+      "Galactic",
+      "Near Earth"
+    ]
+  },
+  "Director SFHQ - Systems Integration": {
+    "ranks": [
+      "Captain"
+    ],
+    "branches": [
+      "Engineering",
+      "Tactical Systems"
+    ],
+    "pools": [
+      "Deep Space",
+      "Near Earth",
+      "Galactic"
+    ]
+  },
+  "Director R&D -": {
+    "ranks": [
+      "Captain"
+    ],
+    "branches": [
+      "Tactical Systems",
+      "Engineering"
+    ],
+    "pools": [
+      "Deep Space",
+      "Near Earth"
+    ]
+  },
+  "Director R&D - Deflector Shields": {
+    "ranks": [
+      "Captain"
+    ],
+    "branches": [
+      "Tactical Systems",
+      "Science"
+    ],
+    "pools": [
+      "Planetary Surface",
+      "Near Earth"
+    ]
+  },
+  "Director R&D - Nanotech Repair": {
+    "ranks": [
+      "Captain"
+    ],
+    "branches": [
+      "Tactical Systems",
+      "Engineering"
+    ],
+    "pools": [
+      "Planetary Surface",
+      "Deep Space",
+      "Near Earth"
+    ]
+  },
+  "Dean -": {
+    "ranks": [
+      "Captain"
+    ],
+    "branches": [
+      "Tactical Systems",
+      "Engineering",
+      "Science",
+      "Hull Systems"
+    ],
+    "pools": [
+      "Galactic",
+      "Planetary Surface",
+      "Near Earth",
+      "Deep Space"
+    ]
+  },
+  "Director R&D - Hull Integrity": {
+    "ranks": [
+      "Captain"
+    ],
+    "branches": [
+      "Tactical Systems",
+      "Science",
+      "Engineering"
+    ],
+    "pools": [
+      "Deep Space",
+      "Near Earth",
+      "Galactic"
+    ]
+  },
+  "Director R&D - Stealth Systems": {
+    "ranks": [
+      "Captain"
+    ],
+    "branches": [
+      "Tactical Systems",
+      "Engineering"
+    ],
+    "pools": [
+      "Planetary Surface",
+      "Deep Space",
+      "Galactic",
+      "Near Earth"
+    ]
+  },
+  "Director Hull Repair Yard Beta": {
+    "ranks": [
+      "Captain"
+    ],
+    "branches": [
+      "Engineering",
+      "Tactical Systems"
+    ],
+    "pools": [
+      "Galactic",
+      "Near Earth"
+    ]
+  },
+  "General Manager": {
+    "ranks": [
+      "Captain"
+    ],
+    "branches": [
+      "Engineering",
+      "Tactical Systems",
+      "Hull Systems",
+      "Science"
+    ],
+    "pools": [
+      "Planetary Surface",
+      "Deep Space",
+      "Galactic",
+      "Near Earth"
+    ]
+  },
+  "Director R&D - Tactical AI": {
+    "ranks": [
+      "Captain"
+    ],
+    "branches": [
+      "Engineering",
+      "Science"
+    ],
+    "pools": [
+      "Planetary Surface",
+      "Near Earth"
+    ]
+  },
+  "Director Hull Repair Yard Alpha": {
+    "ranks": [
+      "Captain"
+    ],
+    "branches": [
+      "Tactical Systems",
+      "Engineering"
+    ],
+    "pools": [
+      "Near Earth",
+      "Deep Space"
+    ]
+  },
+  "Asst to Chief - Tactical Systems": {
+    "ranks": [
+      "Commodore"
+    ],
+    "branches": [
+      "Tactical Systems"
+    ],
+    "pools": [
+      "Planetary Surface",
+      "Near Earth"
+    ]
+  },
+  "Dy Managing Director": {
+    "ranks": [
+      "Commodore"
+    ],
+    "branches": [
+      "Engineering",
+      "Tactical Systems",
+      "Hull Systems"
+    ],
+    "pools": [
+      "Planetary Surface",
+      "Deep Space",
+      "Galactic",
+      "Near Earth"
+    ]
+  },
+  "Managing Director R&D - Plasma Systems": {
+    "ranks": [
+      "Commodore"
+    ],
+    "branches": [
+      "Tactical Systems"
+    ],
+    "pools": [
+      "Planetary Surface"
+    ]
+  },
+  "Asst to Chief - Engineering": {
+    "ranks": [
+      "Commodore"
+    ],
+    "branches": [
+      "Engineering"
+    ],
+    "pools": [
+      "Deep Space",
+      "Near Earth"
+    ]
+  },
+  "Dy Managing Director Hull Repair Yard Beta": {
+    "ranks": [
+      "Commodore"
+    ],
+    "branches": [
+      "Engineering"
+    ],
+    "pools": [
+      "Galactic",
+      "Near Earth"
+    ]
+  },
+  "Director Planetary Repair Depot Two": {
+    "ranks": [
+      "Captain"
+    ],
+    "branches": [
+      "Engineering",
+      "Tactical Systems",
+      "Hull Systems"
+    ],
+    "pools": [
+      "Planetary Surface",
+      "Deep Space",
+      "Near Earth"
+    ]
+  },
+  "Managing Director R&D - Energy Systems": {
+    "ranks": [
+      "Commodore"
+    ],
+    "branches": [
+      "Engineering",
+      "Tactical Systems"
+    ],
+    "pools": [
+      "Planetary Surface",
+      "Near Earth"
+    ]
+  },
+  "Commandant -": {
+    "ranks": [
+      "Commodore"
+    ],
+    "branches": [
+      "Tactical Systems",
+      "Engineering"
+    ],
+    "pools": [
+      "Galactic",
+      "Near Earth"
+    ]
+  },
+  "Director SFHQ - Technical Policy": {
+    "ranks": [
+      "Captain"
+    ],
+    "branches": [
+      "Tactical Systems",
+      "Engineering"
+    ],
+    "pools": [
+      "Galactic",
+      "Near Earth"
+    ]
+  },
+  "Director SFHQ - Strategic Planning": {
+    "ranks": [
+      "Captain"
+    ],
+    "branches": [
+      "Tactical Systems"
+    ],
+    "pools": [
+      "Planetary Surface",
+      "Near Earth"
+    ]
+  },
+  "Dy Managing Director Hull Repair Yard Alpha": {
+    "ranks": [
+      "Commodore"
+    ],
+    "branches": [
+      "Tactical Systems",
+      "Engineering"
+    ],
+    "pools": [
+      "Planetary Surface",
+      "Near Earth"
+    ]
+  },
+  "Director R&D - Energy Systems": {
+    "ranks": [
+      "Captain"
+    ],
+    "branches": [
+      "Tactical Systems",
+      "Engineering"
+    ],
+    "pools": [
+      "Planetary Surface",
+      "Near Earth",
+      "Deep Space"
+    ]
+  },
+  "Managing Director R&D -": {
+    "ranks": [
+      "Commodore"
+    ],
+    "branches": [
+      "Tactical Systems",
+      "Engineering"
+    ],
+    "pools": [
+      "Planetary Surface",
+      "Near Earth"
+    ]
+  },
+  "Director R&D - Sensors and Communications": {
+    "ranks": [
+      "Captain"
+    ],
+    "branches": [
+      "Engineering",
+      "Science"
+    ],
+    "pools": [
+      "Planetary Surface",
+      "Near Earth"
+    ]
+  },
+  "Director R&D - Plasma Systems": {
+    "ranks": [
+      "Captain"
+    ],
+    "branches": [
+      "Engineering",
+      "Science",
+      "Tactical Systems"
+    ],
+    "pools": [
+      "Planetary Surface",
+      "Near Earth",
+      "Deep Space"
+    ]
+  },
+  "Dy Managing Director Planetary Repair Depot Two": {
+    "ranks": [
+      "Commodore"
+    ],
+    "branches": [
+      "Engineering"
+    ],
+    "pools": [
+      "Planetary Surface"
+    ]
+  },
+  "Managing Director": {
+    "ranks": [
+      "Rear Admiral"
+    ],
+    "branches": [
+      "Engineering",
+      "Hull Systems"
+    ],
+    "pools": [
+      "Planetary Surface",
+      "Near Earth"
+    ]
+  },
+  "Staff Officer R&D - Quantum Computing": {
+    "ranks": [
+      "Lieutenant",
+      "Lieutenant Commander"
+    ],
+    "branches": [
+      "Hull Systems",
+      "Science"
+    ],
+    "pools": [
+      "Near Earth",
+      "Galactic",
+      "Deep Space"
+    ]
+  },
+  "General Manager Hull Repair Yard Alpha": {
+    "ranks": [
+      "Captain"
+    ],
+    "branches": [
+      "Tactical Systems",
+      "Engineering"
+    ],
+    "pools": [
+      "Near Earth",
+      "Planetary Surface"
+    ]
+  },
+  "Director SFHQ - Operations Analysis": {
+    "ranks": [
+      "Captain"
+    ],
+    "branches": [
+      "Engineering"
+    ],
+    "pools": [
+      "Near Earth"
+    ]
+  },
+  "Director SFHQ - Capability Planning": {
+    "ranks": [
+      "Captain"
+    ],
+    "branches": [
+      "Tactical Systems",
+      "Engineering"
+    ],
+    "pools": [
+      "Near Earth",
+      "Deep Space",
+      "Galactic"
+    ]
+  },
+  "Director SFHQ - Resource Management": {
+    "ranks": [
+      "Captain"
+    ],
+    "branches": [
+      "Hull Systems",
+      "Engineering"
+    ],
+    "pools": [
+      "Galactic",
+      "Near Earth"
+    ]
+  },
+  "Director R&D - Propulsion Systems": {
+    "ranks": [
+      "Captain"
+    ],
+    "branches": [
+      "Engineering",
+      "Tactical Systems"
+    ],
+    "pools": [
+      "Near Earth"
+    ]
+  },
+  "Director R&D - Structural Materials": {
+    "ranks": [
+      "Captain"
+    ],
+    "branches": [
+      "Engineering"
+    ],
+    "pools": [
+      "Near Earth"
+    ]
+  },
+  "General Manager Planetary Repair Depot Two": {
+    "ranks": [
+      "Captain"
+    ],
+    "branches": [
+      "Tactical Systems",
+      "Engineering"
+    ],
+    "pools": [
+      "Near Earth"
+    ]
+  },
+  "Managing Director R&D - Quantum Computing": {
+    "ranks": [
+      "Commodore"
+    ],
+    "branches": [
+      "Tactical Systems"
+    ],
+    "pools": [
+      "Near Earth"
+    ]
+  },
+  "Asst to Chief - Hull Systems": {
+    "ranks": [
+      "Commodore"
+    ],
+    "branches": [
+      "Hull Systems"
+    ],
+    "pools": [
+      "Near Earth"
+    ]
+  },
+  "Managing Director R&D - Sensors and Communications": {
+    "ranks": [
+      "Commodore"
+    ],
+    "branches": [
+      "Engineering"
+    ],
+    "pools": [
+      "Near Earth",
+      "Deep Space"
+    ]
+  },
+  "Managing Director R&D - Tactical AI": {
+    "ranks": [
+      "Commodore"
+    ],
+    "branches": [
+      "Engineering"
+    ],
+    "pools": [
+      "Near Earth"
+    ]
+  },
+  "Managing Director R&D - Propulsion Systems": {
+    "ranks": [
+      "Commodore"
+    ],
+    "branches": [
+      "Engineering",
+      "Science"
+    ],
+    "pools": [
+      "Near Earth"
+    ]
+  },
+  "Dy Managing Director Planetary Repair Depot One": {
+    "ranks": [
+      "Commodore"
+    ],
+    "branches": [
+      "Engineering",
+      "Hull Systems",
+      "Tactical Systems"
+    ],
+    "pools": [
+      "Planetary Surface",
+      "Galactic",
+      "Near Earth"
+    ]
+  },
+  "Managing Director R&D - Structural Materials": {
+    "ranks": [
+      "Commodore"
+    ],
+    "branches": [
+      "Tactical Systems",
+      "Engineering"
+    ],
+    "pools": [
+      "Near Earth"
+    ]
+  },
+  "Managing Director R&D - Hull Integrity": {
+    "ranks": [
+      "Commodore"
+    ],
+    "branches": [
+      "Engineering"
+    ],
+    "pools": [
+      "Near Earth"
+    ]
+  },
+  "Managing Director R&D - Stealth Systems": {
+    "ranks": [
+      "Commodore"
+    ],
+    "branches": [
+      "Engineering",
+      "Tactical Systems"
+    ],
+    "pools": [
+      "Near Earth"
+    ]
+  },
+  "Managing Director R&D - Nanotech Repair": {
+    "ranks": [
+      "Commodore"
+    ],
+    "branches": [
+      "Tactical Systems"
+    ],
+    "pools": [
+      "Near Earth"
+    ]
+  },
+  "Managing Director R&D - Deflector Shields": {
+    "ranks": [
+      "Commodore"
+    ],
+    "branches": [
+      "Engineering",
+      "Tactical Systems"
+    ],
+    "pools": [
+      "Planetary Surface",
+      "Near Earth"
+    ]
+  },
+  "Managing Director Planetary Repair Depot One": {
+    "ranks": [
+      "Rear Admiral"
+    ],
+    "branches": [
+      "Engineering"
+    ],
+    "pools": [
+      "Near Earth"
+    ]
+  },
+  "Dy to Chief - Tactical Systems": {
+    "ranks": [
+      "Rear Admiral"
+    ],
+    "branches": [
+      "Tactical Systems"
+    ],
+    "pools": [
+      "Near Earth"
+    ]
+  },
+  "Director General R&D - Sensors and Communications": {
+    "ranks": [
+      "Rear Admiral"
+    ],
+    "branches": [
+      "Engineering"
+    ],
+    "pools": [
+      "Near Earth"
+    ]
+  },
+  "Managing Director Hull Repair Yard Alpha": {
+    "ranks": [
+      "Rear Admiral"
+    ],
+    "branches": [
+      "Tactical Systems"
+    ],
+    "pools": [
+      "Near Earth"
+    ]
+  },
+  "Director General R&D - Plasma Systems": {
+    "ranks": [
+      "Rear Admiral"
+    ],
+    "branches": [
+      "Tactical Systems"
+    ],
+    "pools": [
+      "Near Earth"
+    ]
+  },
+  "Director General R&D -": {
+    "ranks": [
+      "Rear Admiral"
+    ],
+    "branches": [
+      "Science"
+    ],
+    "pools": [
+      "Near Earth"
+    ]
+  }
+}

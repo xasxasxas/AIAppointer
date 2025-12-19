@@ -8,7 +8,9 @@ import os
 sys.path.append(os.getcwd())
 
 from src.predictor import Predictor
+from src.xai_helpers import display_xai_section
 from config import DATASET_PATH, UI_PAGE_TITLE, UI_LAYOUT
+
 
 st.set_page_config(page_title=UI_PAGE_TITLE, layout=UI_LAYOUT)
 
@@ -95,7 +97,7 @@ def load_data():
     return pd.read_csv(DATASET_PATH)
 
 def main():
-    st.title("🚀 AI Appointer Assist")
+    st.title("AI Appointer Assist")
     st.markdown("AI-powered system for recommending next-best assignments based on career history.")
     
     # Load Resources
@@ -108,621 +110,76 @@ def main():
         h_titles = list(predictor.transition_stats['title_trans'].keys()) if hasattr(predictor, 'transition_stats') else []
         t_titles = list(predictor.valid_roles) if hasattr(predictor, 'valid_roles') else []
         known_titles = list(set(h_titles + t_titles))
+    with st.sidebar:
+        st.image("https://upload.wikimedia.org/wikipedia/commons/2/27/FP_Satellite_icon.svg", width=50)
+        st.title("AI Appointer")
+        st.caption(f"v3.0 • {len(df)} Records")
+        
+        # Welcome message for first-time users
+        if 'first_visit' not in st.session_state:
+            st.session_state.first_visit = True
+        
+        if st.session_state.first_visit:
+            with st.expander("Welcome! First time here?", expanded=True):
+                st.markdown("""
+                **AI Appointer** uses machine learning to predict optimal career progressions.
+                
+                **Quick Start:**
+                - **Employee Lookup**: Find best next role for an officer
+                - **Billet Lookup**: Find best candidates for a role
+                - **Analytics**: Explore career patterns and data
+                
+                Click any mode to get started!
+                """)
+                if st.button("Got it! Don't show again"):
+                    st.session_state.first_visit = False
+                    st.rerun()
+        
+        mode = st.radio(
+            "Mode", 
+            ["Employee Lookup", "Simulation", "Billet Lookup", "Analytics & Explorer", "Admin Console"],
+            help="Select a mode to navigate between different features"
+        )
+        
+        # Rank Flexibility (Moved to Sidebar)
+        rank_flex_up = 0
+        rank_flex_down = 0
+        if mode in ["Employee Lookup", "Simulation", "Billet Lookup"]:
+            st.markdown("---")
+            with st.expander("Advanced Settings"):
+                st.caption("Adjust Rank Flexibility for predictions.")
+                rank_flex_up = st.slider(
+                    "Flexibility (Up)", 
+                    0, 2, 0, 
+                    help="Allow predictions for roles up to N ranks above current rank. Higher = more aspirational roles."
+                )
+                rank_flex_down = st.slider(
+                    "Flexibility (Down)", 
+                    0, 2, 0, 
+                    help="Allow predictions for roles up to N ranks below current rank. Usually kept at 0."
+                )
+        
+        st.markdown("---")
         
         explainer = load_explainer_v4(df, known_titles)
         
     # Navigation
-    mode = st.sidebar.radio("Mode", ["Employee Lookup", "Simulation", "Billet Lookup", "Branch Analytics", "Dataset Explorer", "Admin Console"])
     
     # ... (Cache control) ...
     
-    # Rank Flexibility Control (Global)
-    with st.expander("⚙️ Advanced Settings (Rank Flexibility)"):
-        rank_flex_up = st.slider("Rank Flexibility (Up)", 0, 2, 0, help="Allow promotion of N levels from predicted rank")
-        rank_flex_down = st.slider("Rank Flexibility (Down)", 0, 2, 0, help="Allow demotion of N levels from predicted rank")
+    # Rank Flexibility Control (Moved to Sidebar)
     
-    if st.sidebar.button("🔄 Reload Models & Cache", help="Click if recent updates are not showing"):
+    if st.sidebar.button("Reload Models & Cache", help="Click if recent updates are not showing"):
         clear_cache()
         st.rerun()
     
-    # =========================================================================
-    # MODE 5: DATASET EXPLORER
-    # =========================================================================
-    if mode == "Dataset Explorer":
-        st.header("💾 Dataset HR Explorer")
-        st.markdown("Interactive exploration of the workforce hierarchy, organizational structure, and career paths.")
-
-        tab_hier, tab_org, tab_flow, tab_stats = st.tabs([
-            "👑 HR Hierarchy", 
-            "🏢 Org Structure", 
-            "🔀 Career Path Flow",
-            "📊 Statistics"
-        ])
-        
-        # --- TAB 1: HR HIERARCHY ---
-        with tab_hier:
-            st.markdown("### Multi-Level Hierarchy Analysis")
-            import plotly.express as px
-            
-            h_col1, h_col2 = st.columns(2)
-            with h_col1:
-                hier_path = st.multiselect("Hierarchy Path", ['Branch', 'Rank', 'Pool', 'Entry_type'], default=['Branch', 'Rank', 'Pool'])
-            with h_col2:
-                color_by = st.selectbox("Color By", ['Count', 'Avg Service (Years)', 'Avg Eval Score'])
-                
-            if hier_path:
-                # Aggregate
-                agg_cols = hier_path
-                # We need metrics. Join with specific columns.
-                # Eval Score? Not in sample dataset rows explicitly as number, mainly textual history? 
-                # Actually, check DataProcessor features. 
-                # Let's count and sum service years.
-                
-                # Check metrics available in df
-                # 'years_service' isn't in df unless calculated by FeatureEngineer. 
-                # We should run FE on full df if not present, OR do quick calc.
-                # Predictor loads df but maybe doesn't save FE result to main 'df' var?
-                # 'df' comes from load_data(). It is RAW.
-                
-                # Quick enrichment if needed
-                if 'years_service' not in df.columns:
-                     # Simple approx
-                     # Parse Date? Expensive for UI.
-                     # Let's check if we can reuse predictor's logic or just skip complex metrics for now.
-                     pass
-                
-                # GroupBy
-                # We need a 'count' column
-                df_viz = df.copy()
-                df_viz['count'] = 1
-                
-            if hier_path:
-                # Aggregate
-                # We need a 'count' column
-                df_viz = df.copy()
-                df_viz['count'] = 1
-                
-                if color_by == 'Count':
-                    fig = px.sunburst(df_viz, path=hier_path, values='count', 
-                                      color='count', color_continuous_scale='Viridis',
-                                      title=f"Workforce by {' > '.join(hier_path)}")
-                else:
-                    st.info("Metric-based coloring requires pre-calculated metrics. Using Count for now.")
-                    fig = px.sunburst(df_viz, path=hier_path, values='count',
-                                      title=f"Workforce by {' > '.join(hier_path)}")
-                
-                # SIMPLIFY: Clean text, detail in tooltip
-                fig.update_traces(textinfo='label', hoverinfo='label+value+percent entry')
-                fig.update_layout(height=700)
-                st.plotly_chart(fig, use_container_width=True)
-            else:
-                st.warning("Select at least one level for hierarchy.")
-
-        # --- TAB 2: ORG STRUCTURE ---
-        with tab_org:
-            st.markdown("### 🏢 Organizational Unit Browser")
-            st.info("Drill down from high-level Units to individual Posts.")
-            
-            # 1. Parse Units Heuristically
-            def extract_unit(appt):
-                if pd.isna(appt): return "Unknown", "Unknown"
-                s = str(appt)
-                if '/' in s:
-                    parts = s.split('/')
-                    left = parts[0].strip()
-                    post = parts[1].strip()
-                    return left, post
-                else:
-                    return s, "General Staff"
-
-            # Check if cached
-            if 'Unit' not in df.columns:
-                with st.spinner("Parsing Organizational Structure..."):
-                    df[['Org_Unit', 'Org_Post']] = df['current_appointment'].apply(lambda x: pd.Series(extract_unit(x)))
-            
-            # Tree Map: Unit -> Post
-            org_view = df.groupby(['Org_Unit', 'Org_Post']).size().reset_index(name='count')
-            
-            # Search Filter
-            search_unit = st.text_input("Search Unit", "")
-            if search_unit:
-                org_view = org_view[org_view['Org_Unit'].str.contains(search_unit, case=False)]
-            
-            if len(org_view) > 0:
-                fig_tree = px.treemap(org_view, path=['Org_Unit', 'Org_Post'], values='count',
-                                      color='count', color_continuous_scale='Blues',
-                                      title="Organizational Command Structure")
-                fig_tree.update_layout(height=800) # Taller for more data
-                fig_tree.update_traces(textinfo="label+value", root_color="lightgrey")
-                st.plotly_chart(fig_tree, use_container_width=True)
-                
-                # Leaf Detail Picker
-                st.divider()
-                st.markdown("#### 👤 Unit Roster")
-                sel_unit = st.selectbox("Select Unit to Inspect", sorted(org_view['Org_Unit'].unique()))
-                
-                if sel_unit:
-                    roster = df[df['Org_Unit'] == sel_unit]
-                    st.dataframe(roster[['Employee_ID', 'Rank', 'Name', 'current_appointment', 'Branch']], hide_index=True)
-            else:
-                st.warning("No units match search.")
-
-        # --- TAB 3: CAREER PATH FLOW (SANKEY) ---
-        with tab_flow:
-            st.markdown("### 🔀 Interactive Career Path Explorer")
-            st.caption("Trace how officers move between specific roles. Use filters to focus the diagram.")
-            import plotly.graph_objects as go
-            
-            # Filters
-            fc1, fc2, fc3 = st.columns(3)
-            with fc1:
-                f_branch = st.multiselect("Filter Branch", sorted(df['Branch'].unique()), default=[])
-            with fc2:
-                f_rank = st.multiselect("Filter Rank", sorted(df['Rank'].unique()), default=[])
-            with fc3:
-                use_generic = st.checkbox("Group by Generic Titles", value=True, help="Merges 'Div Officer USS A' and 'Div Officer USS B' into 'Div Officer'")
-
-            # Data Prep
-            sankey_df = df.copy()
-            if f_branch: sankey_df = sankey_df[sankey_df['Branch'].isin(f_branch)]
-            if f_rank: sankey_df = sankey_df[sankey_df['Rank'].isin(f_rank)]
-            
-            # Helper to generate transitions
-            transitions = []
-            
-            # Regex for generic cleaning
-            def clean_title(t):
-                if not use_generic: return t.strip()
-                t = re.sub(r'\s*\/.*', '', t) # Remove post
-                t = re.sub(r'\s*USS .*', '', t) # Remove Ship
-                t = re.sub(r'\s*Starbase .*', '', t) # Remove Starbase
-                return t.strip()
-
-            import re
-            
-            for _, row in sankey_df.iterrows():
-                # Parse History
-                hist_str = row['Appointment_history']
-                if not isinstance(hist_str, str): continue
-                
-                # Clean and Split
-                raw_items = hist_str.split(',')
-                roles = []
-                for item in raw_items:
-                    clean = re.sub(r'\s*\(.*?\)', '', item).strip()
-                    if clean:
-                        roles.append(clean_title(clean))
-                
-                # Chain
-                if len(roles) >= 2:
-                    for i in range(len(roles)-1):
-                        transitions.append((roles[i], roles[i+1]))
-            
-            # --- NETWORK GRAPH IMPLEMENTATION ---
-            import networkx as nx
-            import numpy as np
-            
-            # 1. Build Transitions & Identify Ranks
-            transitions = []
-            node_rank_evidence = {} # Map Role -> List of Ranks seen
-            
-            # Helper to clean titles
-            def clean_title_network(t):
-                if not use_generic: return t.strip()
-                t = re.sub(r'\s*\/.*', '', t) # Remove post
-                t = re.sub(r'\s*USS .*', '', t) # Remove Ship
-                t = re.sub(r'\s*Starbase .*', '', t) # Remove Starbase
-                return t.strip()
-            
-            # We process rows to get Transitions AND Role->Rank mapping
-            for _, row in sankey_df.iterrows():
-                row_rank = row['Rank']
-                hist_str = row['Appointment_history']
-                
-                if not isinstance(hist_str, str): continue
-                
-                # Split history
-                raw_items = hist_str.split(',')
-                roles = []
-                for item in raw_items:
-                    clean = re.sub(r'\s*\(.*?\)', '', item).strip()
-                    if clean:
-                        final_role = clean_title_network(clean)
-                        roles.append(final_role)
-                        
-                        # Collect Rank Evidence
-                        # We assume the user's CURRENT rank applies to their LAST role? 
-                        # Or do we rely on the row['Rank'] for the *current* role?
-                        # Heuristic: The *last* role in the history list tends to be the Current Appointment title.
-                        # So we associate row['Rank'] with the LAST role in the list.
-                        # For previous roles, we don't know the rank for sure, but we can infer from other rows where that role IS the current one.
-                        
-                if roles:
-                    # Current Role (Last item) gets the Current Rank
-                    curr_role = roles[-1]
-                    if curr_role not in node_rank_evidence: node_rank_evidence[curr_role] = []
-                    node_rank_evidence[curr_role].append(row_rank)
-                    
-                    # Transitions
-                    if len(roles) >= 2:
-                        for i in range(len(roles)-1):
-                            transitions.append((roles[i], roles[i+1]))
-
-            if transitions:
-                # 2. Define Rank Hierarchy (Master List)
-                # We use this ONLY for sorting. We only display ranks actually present in data.
-                master_rank_order = [
-                    'Ensign', 'Lieutenant (jg)', 'Lieutenant', 'Lieutenant Commander', 
-                    'Commander', 'Captain', 'Commodore', 'Rear Admiral', 'Vice Admiral', 'Admiral'
-                ]
-                # Fallback for unknown ranks: put them at bottom or top
-                
-                # Determine "Actual" Ranks present in this filtered dataset
-                present_ranks = sankey_df['Rank'].unique()
-                
-                # Sort present ranks based on master order
-                sorted_ranks = []
-                for mr in master_rank_order:
-                    if mr in present_ranks:
-                        sorted_ranks.append(mr)
-                
-                # Add any unknown ranks that weren't in master list (e.g. 'Cadet')
-                for pr in present_ranks:
-                    if pr not in sorted_ranks:
-                        sorted_ranks.insert(0, pr) # Put unknowns at start (junior)
-                        
-                # 3. Resolve Node Ranks
-                # Map each Role to its Mode Rank (most frequent)
-                node_assigned_rank = {}
-                for role, ranks in node_rank_evidence.items():
-                    if not ranks: continue
-                    from collections import Counter
-                    common = Counter(ranks).most_common(1)
-                    node_assigned_rank[role] = common[0][0]
-                
-                # Also include nodes involved in transitions but maybe not as "current" (last) role
-                # These might lack direct rank evidence. We assign them to 'Ensign' or infer?
-                # For now, if no evidence, skip or assign lowest.
-                
-                # Build Graph
-                G = nx.DiGraph()
-                
-                # Add edges (weighted)
-                t_counts = Counter(transitions)
-                for (u, v), w in t_counts.items():
-                    G.add_edge(u, v, weight=w)
-                
-                # Define all_nodes for usage in other charts
-                all_nodes = list(G.nodes())
-                
-                # 4. Metrics for Visuals (Centrality, Communities)
-                # "Visualize entire appointment space" -> Clusters of related roles.
-                # k parameter controls spacing.
-                pos = nx.spring_layout(G, k=0.15, iterations=50, seed=42)
-                
-                # Metrics for Visuals
-                # Centrality -> Node Size
-                centrality = nx.degree_centrality(G)
-                # Communities -> Node Color
-                # Use greedy_modularity_communities (undirected for community)
-                from networkx.algorithms import community
-                try:
-                    communities = community.greedy_modularity_communities(G.to_undirected())
-                    # Map node -> community ID
-                    comm_map = {}
-                    for i, comm in enumerate(communities):
-                        for n in comm:
-                            comm_map[n] = i
-                except:
-                    comm_map = {n: 0 for n in G.nodes()}
-
-                # 5. Advanced ECharts Visualizations
-                from streamlit_echarts import st_echarts
-                import random
-                
-                # Selector
-                viz_type = st.radio(
-                    "Visualization Mode", 
-                    ["🕸️ Network Graph (Relationship Map)", "🌊 Sankey Diagram (Flow)", "🗺️ Career Lattice (Rank vs Branch)"], 
-                    horizontal=True
-                )
-                
-                # --- A. NETWORK GRAPH (FIXED LES MIS STYLE) ---
-                if "Network" in viz_type:
-                    # 1. Cluster Naming Heuristic
-                    cluster_names = {}
-                    unique_ids = sorted(list(set(comm_map.values())))
-                    
-                    for cid in unique_ids:
-                        nodes_in_c = [n for n, c in comm_map.items() if c == cid]
-                        words = []
-                        for n in nodes_in_c:
-                            parts = re.split(r'[\s\(\)\-\/]+', n)
-                            for p in parts:
-                                if len(p) > 3 and p.lower() not in ['officer', 'chief', 'asst', 'vice', 'staff']:
-                                    words.append(p)
-                        
-                        from collections import Counter
-                        if words:
-                            top_word = Counter(words).most_common(1)[0][0]
-                            cluster_time = f"{top_word} Group"
-                        else:
-                            ranks = [node_assigned_rank.get(n, "") for n in nodes_in_c]
-                            if ranks:
-                                top_rank = Counter(ranks).most_common(1)[0][0]
-                                cluster_time = f"{top_rank} Group"
-                            else:
-                                cluster_time = f"Cluster {cid}"
-                            
-                        cluster_names[cid] = cluster_time
-
-                    # 2. Caching Layout (Prevent Resets)
-                    layout_key = f"layout_{hash(tuple(sorted(list(G.nodes()))))}"
-                    
-                    if layout_key not in st.session_state:
-                         # Calculate optimal layout once
-                         st.session_state[layout_key] = nx.spring_layout(G, k=0.15, iterations=100, seed=42)
-                    
-                    pos_screen = st.session_state[layout_key]
-                    
-                    # Prepare Nodes with Fixed X, Y
-                    echarts_nodes = []
-                    
-                    vals = np.array(list(pos_screen.values()))
-                    min_v = vals.min(axis=0)
-                    max_v = vals.max(axis=0)
-                    
-                    node_list = list(G.nodes())
-                    categories = [{"name": cluster_names[cid]} for cid in unique_ids]
-                    
-                    for i, node in enumerate(node_list):
-                        # Safe normalization
-                        denom_x = (max_v[0] - min_v[0]) if (max_v[0] - min_v[0]) != 0 else 1
-                        denom_y = (max_v[1] - min_v[1]) if (max_v[1] - min_v[1]) != 0 else 1
-                        
-                        x_norm = (pos_screen[node][0] - min_v[0]) / denom_x
-                        y_norm = (pos_screen[node][1] - min_v[1]) / denom_y
-                        
-                        # Scale
-                        x_fixed = x_norm * 1000 - 500
-                        y_fixed = y_norm * 800 - 400
-                        
-                        deg = G.degree(node)
-                        sz = min(10 + deg*3, 60)
-                        
-                        cid = comm_map.get(node, 0)
-                        cat_name = cluster_names[cid]
-                        
-                        try:
-                            cat_idx = next(i for i, c in enumerate(categories) if c["name"] == cat_name)
-                        except:
-                            cat_idx = 0
-                        
-                        echarts_nodes.append({
-                            "name": node,
-                            "x": x_fixed,
-                            "y": y_fixed,
-                            "symbolSize": sz,
-                            "category": cat_idx,
-                            "value": deg,
-                            "label": {"show": deg > 5}
-                        })
-
-                    # Links
-                    echarts_links = [{"source": u, "target": v} for u, v in G.edges()]
-                    
-                    option = {
-                        "title": {
-                            "text": "Appointment Relationship Map",
-                            "subtext": "Fixed Layout (Cached)",
-                            "top": "bottom",
-                            "left": "right"
-                        },
-                        "tooltip": {},
-                        "legend": [{
-                            "data": [c["name"] for c in categories],
-                            "type": "scroll", 
-                            "orient": "horizontal",
-                            "top": 10
-                        }],
-                        "series": [{
-                            "name": "Roles",
-                            "type": "graph",
-                            "layout": "none", # FIXED POSITIONS
-                            "data": echarts_nodes,
-                            "links": echarts_links,
-                            "categories": categories,
-                            "roam": True,
-                            "label": {
-                                "position": "right",
-                                "formatter": "{b}"
-                            },
-                            "lineStyle": {
-                                "color": "source",
-                                "curveness": 0.3
-                            },
-                            "emphasis": {
-                                "focus": "adjacency",
-                                "lineStyle": {"width": 5}
-                            }
-                        }]
-                    }
-                    st_echarts(option, height="700px")
-                    st.caption("ℹ️ **Stable Layout**: Graph positions are cached. Changing filters will regenerate the layout.")
-                    
-                # --- B. SANKEY (DAG ENFORCED) ---
-                elif "Sankey" in viz_type:
-                    # 1. Build Temporary Graph
-                    G_sankey = nx.DiGraph()
-                    t_counts = Counter(transitions)
-                    for (u, v), w in t_counts.items():
-                        if w > 0: G_sankey.add_edge(u, v, weight=w)
-                    
-                    # 2. Strict DAG Enforcement (The "Rigorous" Fix)
-                    # Sankey fails on cycles. Remove self-loops first.
-                    G_sankey.remove_edges_from(nx.selfloop_edges(G_sankey))
-                    
-                    # Iteratively remove cycles
-                    # Limit iterations to avoid infinite loops in worst case
-                    max_breaks = 100
-                    breaks = 0
-                    while not nx.is_directed_acyclic_graph(G_sankey) and breaks < max_breaks:
-                        try:
-                            cycle = nx.find_cycle(G_sankey)
-                            # Remove the edge with lowest weight in the cycle to preserve main flows
-                            # (Simple heuristic: just remove the first edge found in cycle for speed)
-                            G_sankey.remove_edge(*cycle[0][:2]) 
-                            breaks += 1
-                        except:
-                            break
-                            
-                    # 3. Build Safe Data
-                    slinks = []
-                    found_nodes = set()
-                    
-                    for u, v, data in G_sankey.edges(data=True):
-                        w = data.get('weight', 1)
-                        slinks.append({"source": str(u), "target": str(v), "value": int(w)})
-                        found_nodes.add(str(u))
-                        found_nodes.add(str(v))
-
-                    if not slinks:
-                        st.warning("⚠️ No valid acyclic career paths found. Try expanding your filters.")
-                    else:
-                        snodes = [{"name": n} for n in sorted(list(found_nodes))]
-                        
-                        option = {
-                            "title": {"text": "Career Transition Flow (Acyclic)", "left": "center"},
-                            "tooltip": {"trigger": "item", "triggerOn": "mousemove"},
-                            "series": [{
-                                "type": "sankey",
-                                "data": snodes,
-                                "links": slinks,
-                                "orient": "horizontal",
-                                "label": {"position": "right"},
-                                "lineStyle": {"color": "source", "curveness": 0.5},
-                                "layoutIterations": 32 
-                            }]
-                        }
-                        st_echarts(option, height="800px")
-                        if breaks > 0:
-                            st.caption(f"🌊 **Sankey Diagram**: Visualizing linear flows. Note: {breaks} cyclic loops were hidden to ensure rendering.")
-                        else:
-                            st.caption("🌊 **Sankey Diagram**: Shows volume of movement between roles.")
-                    
-                # --- C. CAREER LATTICE (JITTERED) ---
-                elif "Lattice" in viz_type:
-                    # 1. Setup Axes
-                    if 'sorted_ranks' not in locals():
-                        sorted_ranks = ["Ensign", "Lieutenant (jg)", "Lieutenant", "Lieutenant Commander", "Commander", "Captain", "Commodore", "Rear Admiral", "Vice Admiral", "Admiral"]
-                    
-                    # Map Nodes to Branches
-                    role_branch_groups = sankey_df.groupby('current_appointment')['Branch'].agg(lambda x: x.mode()[0] if not x.mode().empty else "Unknown")
-                    node_branch_map = role_branch_groups.to_dict()
-                    present_branches = sorted(list(set([node_branch_map.get(n, "Unknown") for n in G.nodes()])))
-                    
-                    # 2. Build Nodes with JITTER and NO LABELS (by default)
-                    lattice_nodes = []
-                    
-                    for node in G.nodes():
-                        # Y: Branch
-                        b = node_branch_map.get(node, "Unknown")
-                        try: y_idx = present_branches.index(b)
-                        except: y_idx = 0
-                            
-                        # X: Rank
-                        r = node_assigned_rank.get(node, "Unknown")
-                        try: x_idx = sorted_ranks.index(r)
-                        except: x_idx = 0
-                        
-                        # Add Jitter to prevent overlap
-                        rng = random.Random(str(node)) # Deterministic jitter based on name
-                        x_jit = x_idx + rng.uniform(-0.35, 0.35)
-                        y_jit = y_idx + rng.uniform(-0.35, 0.35)
-                        
-                        lattice_nodes.append({
-                            "name": node,
-                            "value": [x_jit, y_jit], # JITTERED COORDINATES
-                            "symbolSize": 10 + (G.degree(node)*1.5),
-                            "itemStyle": {"color": "#5470c6"},
-                            # HIDE LABELS to reduce clutter
-                            "label": {"show": False, "formatter": "{b}"},
-                            "emphasis": {
-                                "label": {"show": True, "position": "top", "fontWeight": "bold"}
-                            }
-                        })
-                        
-                    # 3. Links
-                    lattice_links = [{"source": u, "target": v} for u, v in G.edges()]
-                    
-                    option = {
-                        "title": {"text": "Career Lattice (Rank vs Branch)", "left": "center"},
-                        "tooltip": {"trigger": "item"},
-                        "grid": {
-                            "left": "15%", "right": "15%", "top": "10%", "bottom": "10%"
-                        },
-                        "xAxis": {
-                            "type": "category",
-                            "data": sorted_ranks,
-                            "name": "Rank Progression",
-                            "nameLocation": "middle",
-                            "nameGap": 30
-                        },
-                        "yAxis": {
-                            "type": "category",
-                            "data": present_branches,
-                            "name": "Branch / Pool",
-                            "nameLocation": "end"
-                        },
-                        "series": [{
-                            "type": "graph",
-                            "layout": "none",
-                            "coordinateSystem": "cartesian2d",
-                            "data": lattice_nodes,
-                            "links": lattice_links,
-                            "edgeSymbol": ['none', 'arrow'],
-                            "edgeSymbolSize": [4, 8],
-                            "lineStyle": {
-                                "color": "#ccc",
-                                "curveness": 0.1,
-                                "width": 1,
-                                "opacity": 0.6
-                            },
-                            "roam": True
-                        }]
-                    }
-                    
-                    st_echarts(option, height="800px")
-                    st.caption("🗺️ **Career Lattice**: Roles are plotted by Rank (X) and Branch (Y). **Nodes are jittered** to show overlaps. Hover to see names.")
-            
-            else:
-                st.info("No transition data for selected.")
-
-
-        # --- TAB 4: STATISTICS ---
-        with tab_stats:
-            st.markdown("### 📊 Dataset Demographics")
-            
-            k1, k2, k3, k4 = st.columns(4)
-            k1.metric("Total Officers", len(df))
-            k2.metric("Unique Roles", df['current_appointment'].nunique())
-            k3.metric("Branches", df['Branch'].nunique())
-            k4.metric("Avg Service", "N/A") # Placeholder
-            
-            # Charts
-            c1, c2 = st.columns(2)
-            with c1:
-                st.markdown("**Rank Distribution**")
-                st.bar_chart(df['Rank'].value_counts())
-            with c2:
-                st.markdown("**Branch Distribution**")
-                st.bar_chart(df['Branch'].value_counts())
+    # Dataset Explorer removed (Merged into Analytics & Explorer)
 
     # =========================================================================
     # MODE 6: ADMIN CONSOLE (RETRAINING HUD)
     # =========================================================================
     if mode == "Admin Console":
-        st.header("🛠️ Model Management Console")
+        st.header("Model Management Console")
         st.markdown("Upload new data, retrain the AI, and manage deployments.")
         
         from src.training_manager import TrainingManager
@@ -744,13 +201,13 @@ def main():
             # Validate
             valid, msg = manager.validate_dataset(path)
             if valid:
-                st.success("✅ Dataset Structure Validated")
+                st.success("[OK] Dataset Structure Validated")
                 
                 # 2. Training Trigger
                 st.subheader("2. Retrain Model")
                 st.info("Training will generate a new 'Staging' model. Production is not affected until you deploy.")
                 
-                if st.button("🚀 Start Training Pipeline"):
+                if st.button("Start Training Pipeline"):
                     with st.status("Running Training Pipeline...", expanded=True) as status:
                         st.write("Initializing...")
                         
@@ -758,9 +215,9 @@ def main():
                         session_id, result = manager.train_staging_model(path)
                         
                         if session_id:
-                            st.write("✅ Data Processing Complete")
-                            st.write("✅ LTR Model Trained")
-                            st.write("✅ Artifacts Generated")
+                            st.write("[OK] Data Processing Complete")
+                            st.write("[OK] LTR Model Trained")
+                            st.write("[OK] Artifacts Generated")
                             status.update(label="Training Complete!", state="complete", expanded=False)
                             
                             st.session_state.training_session = session_id
@@ -770,7 +227,7 @@ def main():
                             status.update(label="Training Failed", state="error")
                             st.error(f"Pipeline Error: {result}")
             else:
-                st.error(f"❌ Validation Failed: {msg}")
+                st.error(f"[ERROR] Validation Failed: {msg}")
                 
         # 3. Deployment
         if st.session_state.training_session:
@@ -790,7 +247,7 @@ def main():
             st.markdown("---")
             col_d1, col_d2 = st.columns(2)
             with col_d1:
-                if st.button("📢 Deploy to Production", type="primary"):
+                if st.button("Deploy to Production", type="primary"):
                     success, msg = manager.commit_model(st.session_state.training_session)
                     if success:
                         st.success(f"DEPLOYED! {msg}")
@@ -800,15 +257,15 @@ def main():
                         st.error(f"Deployment Failed: {msg}")
             
             with col_d2:
-                if st.button("🗑️ Discard Staging Model"):
+                if st.button("Discard Staging Model"):
                     st.session_state.training_session = None
                     st.rerun()
 
         # 4. Rollback
         st.divider()
-        with st.expander("⚠️ Danger Zone: Rollback"):
+        with st.expander("Danger Zone: Rollback"):
             st.warning("Restore the previous model version if the current one is unstable.")
-            if st.button("⏪ Rollback to Last Backup"):
+            if st.button("Rollback to Last Backup"):
                 success, msg = manager.rollback()
                 if success:
                     st.success(msg)
@@ -821,28 +278,57 @@ def main():
     # MODE 1: EMPLOYEE LOOKUP
     # =========================================================================
     if mode == "Employee Lookup":
-        st.header("Search & Predict")
+        st.header("Employee Lookup")
+        st.info(" **Find the best next role for an officer** based on their career history, skills, and organizational patterns. The AI analyzes historical career progressions and identifies optimal next steps.")
         
         # 1. Filters
-        st.markdown("### 🔍 Filter Officers")
-        col_f1, col_f2, col_f3 = st.columns(3)
+        st.markdown("### Filter Officers")
+        st.caption("Narrow down the officer pool using filters and search")
+        col_f1, col_f2, col_f3, col_f4 = st.columns(4)
         
         all_ranks = sorted(df['Rank'].unique())
         all_branches = sorted(df['Branch'].unique())
         all_entries = sorted(df['Entry_type'].unique())
         
         with col_f1:
-            sel_rank = st.selectbox("Rank", ["All"] + list(all_ranks))
+            sel_rank = st.selectbox("Rank", ["All"] + list(all_ranks), help="Filter officers by their current rank")
         with col_f2:
-            sel_branch = st.selectbox("Branch", ["All"] + list(all_branches))
+            sel_branch = st.selectbox("Branch", ["All"] + list(all_branches), help="Filter officers by their branch (e.g., Tactical, Engineering)")
         with col_f3:
-            sel_entry = st.selectbox("Entry Type", ["All"] + list(all_entries))
+            sel_entry = st.selectbox("Entry Type", ["All"] + list(all_entries), help="Filter by how the officer entered service (e.g., Academy, Direct Commission)")
+        with col_f4:
+            pattern_filter = st.selectbox(
+                "Career Pattern", 
+                ["All", "Has Pattern", "High Confidence (>80%)", "No Pattern"],
+                help="Filter by Markov career progression patterns. 'Has Pattern' shows officers with recognized career sequences from historical data."
+            )
+        
+        # NEW: Search fields
+        col_s1, col_s2 = st.columns(2)
+        with col_s1:
+            employee_id_search = st.text_input(
+                "Search by Employee ID", 
+                placeholder="e.g., 200094",
+                help="Enter full or partial Employee ID to quickly find a specific officer"
+            )
+        with col_s2:
+            name_search = st.text_input(
+                "Search by Name", 
+                placeholder="e.g., Kirk",
+                help="Enter full or partial name (case-insensitive). Supports partial matching."
+            )
             
         # 2. Filter Data
         filtered_df = df.copy()
         if sel_rank != "All": filtered_df = filtered_df[filtered_df['Rank'] == sel_rank]
         if sel_branch != "All": filtered_df = filtered_df[filtered_df['Branch'] == sel_branch]
         if sel_entry != "All": filtered_df = filtered_df[filtered_df['Entry_type'] == sel_entry]
+        
+        # NEW: Apply search filters
+        if employee_id_search:
+            filtered_df = filtered_df[filtered_df['Employee_ID'].astype(str).str.contains(employee_id_search, case=False, na=False)]
+        if name_search:
+            filtered_df = filtered_df[filtered_df['Name'].str.contains(name_search, case=False, na=False)]
         
         count = len(filtered_df)
         st.success(f"Found {count} officers matching criteria.")
@@ -856,16 +342,19 @@ def main():
             
             col_prev, col_stat, col_next = st.columns([1, 2, 1])
             with col_prev:
-                if st.button("⬅️ Previous"):
+                if st.button("Previous"):
                     st.session_state.curr_idx = (st.session_state.curr_idx - 1) % count
             with col_next:
-                if st.button("Next ➡️"):
+                if st.button("Next"):
                     st.session_state.curr_idx = (st.session_state.curr_idx + 1) % count
             with col_stat:
                 st.markdown(f"<div style='text-align: center; font-weight: bold; padding-top: 10px;'>Officer {st.session_state.curr_idx + 1} of {count}</div>", unsafe_allow_html=True)
                 
-            # 4. Display Current Officer
+            # 4. Display Current Officer with NAME
             row = filtered_df.iloc[st.session_state.curr_idx]
+            
+            # Display officer header with name
+            st.markdown(f"### Officer: {row['Employee_ID']} - {row['Rank']} {row['Name']} ({row['Branch']})")
             
             st.divider()
             col1, col2, col3 = st.columns(3)
@@ -880,11 +369,11 @@ def main():
                 st.text(f"Entry: {row['Entry_type']}")
                 
             # History
-            with st.expander("📜 Career History", expanded=False):
+            with st.expander("Career History", expanded=False):
                 st.text_area("History", row['Appointment_history'], height=100, disabled=True)
 
             # 5. AUTO-PREDICT
-            st.markdown("### 🔮 Predicted Trajectory")
+            st.markdown("### Predicted Trajectory")
             try:
                 # Convert Series to DF for predictor
                 input_df = pd.DataFrame([row])
@@ -901,17 +390,65 @@ def main():
 
                 st.subheader(f"Top 10 Recommendations")
                 
-                # Interactive List with Explainability
-                # Logic mirrors Billet Lookup
+                # NEW: Import helper for pattern info
+                from src.xai_helpers import get_markov_pattern_info
                 
+                # Store pattern info for filtering
+                results_with_patterns = []
                 for idx, r_row in results.head(10).iterrows():
                     score = r_row['Confidence']
-                    score_color = "🟢" if score > 0.5 else "🟡" if score > 0.1 else "⚪"
                     role_name = r_row['role'] if 'role' in r_row else r_row['Prediction']
                     
-                    with st.expander(f"{score_color} {score:.1%} | {role_name}"):
+                    # Get Markov pattern info
+                    pattern_info = get_markov_pattern_info(predictor, row, role_name)
+                    
+                    results_with_patterns.append({
+                        'idx': idx,
+                        'row': r_row,
+                        'score': score,
+                        'role_name': role_name,
+                        'pattern_info': pattern_info
+                    })
+                
+                # Apply pattern filter
+                if pattern_filter == "Has Pattern":
+                    results_with_patterns = [r for r in results_with_patterns if r['pattern_info'] and r['pattern_info']['context_seen']]
+                elif pattern_filter == "High Confidence (>80%)":
+                    results_with_patterns = [r for r in results_with_patterns if r['pattern_info'] and r['pattern_info']['context_seen'] and r['pattern_info']['target_probability'] > 0.8]
+                elif pattern_filter == "No Pattern":
+                    results_with_patterns = [r for r in results_with_patterns if not r['pattern_info'] or not r['pattern_info']['context_seen']]
+                
+                if not results_with_patterns:
+                    st.info(f"No results match the '{pattern_filter}' filter. Try changing the filter.")
+                
+                # Interactive List with Explainability
+                for result_data in results_with_patterns:
+                    r_row = result_data['row']
+                    score = result_data['score']
+                    role_name = result_data['role_name']
+                    pattern_info = result_data['pattern_info']
+                    
+                    # Score color
+                    score_color = "[HIGH]" if score > 0.5 else "[MED]" if score > 0.1 else "[LOW]"
+                    
+                    # Pattern badge
+                    pattern_badge = ""
+                    if pattern_info and pattern_info['context_seen']:
+                        prob = pattern_info['target_probability']
+                        order = pattern_info['order_used']
+                        if prob > 0.8:
+                            pattern_badge = f"[PATTERN] {order}-step ({prob*100:.0f}%)"
+                        elif prob > 0.4:
+                            pattern_badge = f"[PATTERN] {order}-step ({prob*100:.0f}%)"
+                        else:
+                            pattern_badge = f"[PATTERN] {order}-step ({prob*100:.0f}%)"
+                    
+                    # Build header with pattern indicator
+                    header = f"{score_color} {score:.1%} | {pattern_badge + ' | ' if pattern_badge else ''}{role_name}"
+                    
+                    with st.expander(header):
                          # 1. Breakdown Chart
-                        st.markdown("#### 📊 Why this recommendation?")
+                        st.markdown("#### Why this recommendation?")
                         feats = r_row.get('_Feats', {})
                         if feats:
                             
@@ -937,18 +474,22 @@ def main():
                             m_re = metrics.get('Rank & Entry Fit', {'value': '-', 'desc': 'No Data'})
                             c5.metric("Rank & Entry", m_re['value'], help=m_re['desc'])
                             
-                            # Deep Dive XAI
+                            # Deep Dive XAI - NEW IMPLEMENTATION
                             if contribs:
-                                with st.expander("🔍 Deep Dive Analysis (XAI)"):
-                                    st.markdown("This chart shows exactly how each feature pushed the score up (Green) or down (Red).")
-                                    # Pass Base Value for accurate Waterfall starting point
-                                    # This answers "Why is score -1.46?" vs "33%" (Raw vs Norm)
-                                    base_v = r_row.get('_BaseVal', 0.0)
-                                    fig = explainer.create_shap_waterfall(contribs, base_value=base_v, feats=feats)
-                                    st.plotly_chart(fig, use_container_width=True, key=f"xai_chart_{int(score*100)}_{role_name}")
+                                display_xai_section(
+                                    predictor=predictor,
+                                    explainer=explainer,
+                                    officer_data=row,
+                                    target_role=role_name,
+                                    score=score,
+                                    contribs=contribs,
+                                    base_value=r_row.get('_BaseVal', 0.0),
+                                    feats=feats,
+                                    mode="employee"
+                                )
 
                         # 2. Historical Precedents
-                        st.markdown("#### 📜 Historical Precedents")
+                        st.markdown("#### Historical Precedents")
                         
                         # Use exact title from Predictor context (matches Tooltip)
                         ctx = feats.get('_Context', {})
@@ -975,144 +516,722 @@ def main():
     # =========================================================================
     # MODE 4: BRANCH ANALYTICS (DASHBOARD)
     # =========================================================================
-    elif mode == "Branch Analytics":
-        st.header("📊 Workforce Flow Analytics")
+    # =========================================================================
+    # MODE 4: ANALYTICS COMMAND CENTER
+    # =========================================================================
+    # =========================================================================
+    # MODE 4: ANALYTICS & EXPLORER
+    # =========================================================================
+    elif mode == "Analytics & Explorer":
+        st.header("Analytics & Data Explorer")
+        st.info(" **Explore organizational data, career flows, and appointment patterns**. Analyze career progression trends, organizational structure, and historical appointment timelines.")
+        st.caption("Strategic insights, organizational structure, and detailed dataset exploration.")
+        
         import plotly.graph_objects as go
+        import plotly.express as px
+        from src.data_processor import DataProcessor
+        from streamlit_echarts import st_echarts
+        from src.gantt_viz import create_appointment_gantt, create_role_timeline
+        import networkx as nx
         
-        # Tabs for Dashboard
-        tab_flow, tab_ai = st.tabs(["🔀 Flow Chart (Sankey)", "🧠 AI Promo Drivers (Global XAI)"])
+        # Tabs
+        t_data, t_stats, t_flow, t_map, t_void, t_org, t_gantt = st.tabs([
+            "Data Browser",
+            "Statistics",
+            "Career Explorer",
+            "Appointments Map",
+            "Void Analysis",
+            "Org Structure",
+            "Appointment Timeline"
+        ])
         
-        with tab_flow:
-            # Rich Sankey: Entry -> Rank -> Branch -> Pool
+        # =====================================================================
+        # TAB 1: DATA BROWSER
+        # =====================================================================
+        with t_data:
+            st.markdown("###  Dataset Explorer")
+            st.caption("Inspect raw records, filter datasets, and download reports.")
             
-            # 1. Controls
-            all_branches = sorted(df['Branch'].unique())
-            sel_branches = st.multiselect("Select Branches to Visualize", all_branches, default=all_branches[:3])
-            
-            if not sel_branches:
-                st.warning("Please select at least one branch.")
-            else:
-                sankey_df = df[df['Branch'].isin(sel_branches)]
-                
-                if len(sankey_df) > 1000:
-                    st.info(f"Visualizing random sample of 1000 officers from {len(sankey_df)} total to improve performance.")
-                    sankey_df = sankey_df.sample(1000)
-                    
-                # 2. Aggregations
-                # Flow 1: Entry -> Rank
-                f1 = sankey_df.groupby(['Entry_type', 'Rank']).size().reset_index(name='count')
-                # Flow 2: Rank -> Branch
-                f2 = sankey_df.groupby(['Rank', 'Branch']).size().reset_index(name='count')
-                # Flow 3: Branch -> Pool (Top 10 Pools)
-                top_pools = sankey_df['Pool'].value_counts().head(10).index.tolist()
-                f3 = sankey_df[sankey_df['Pool'].isin(top_pools)].groupby(['Branch', 'Pool']).size().reset_index(name='count')
-                
-                # Nodes
-                labels = []
-                labels.extend(sorted(f1['Entry_type'].unique())) # 0..A
-                entry_end = len(labels)
-                
-                labels.extend(sorted(f1['Rank'].unique())) # A..B
-                rank_end = len(labels)
-                
-                labels.extend(sorted(f2['Branch'].unique())) # B..C
-                branch_end = len(labels)
-                
-                labels.extend(sorted(f3['Pool'].unique())) # C..D
-                
-                label_map = {l: i for i, l in enumerate(labels)}
-                
-                sources = []
-                targets = []
-                values = []
-                colors = []
-                
-                # Link Generation
-                # 1: Entry -> Rank
-                for _, r in f1.iterrows():
-                    sources.append(label_map[r['Entry_type']])
-                    targets.append(label_map[r['Rank']])
-                    values.append(r['count'])
-                    colors.append("rgba(31, 119, 180, 0.3)")
-                    
-                # 2: Rank -> Branch
-                for _, r in f2.iterrows():
-                    src = r['Rank']
-                    tgt = r['Branch']
-                    if src in label_map and tgt in label_map:
-                        sources.append(label_map[src])
-                        targets.append(label_map[tgt])
-                        values.append(r['count'])
-                        colors.append("rgba(255, 127, 14, 0.3)")
-                        
-                # 3: Branch -> Pool
-                for _, r in f3.iterrows():
-                    src = r['Branch']
-                    tgt = r['Pool']
-                    if src in label_map and tgt in label_map:
-                        sources.append(label_map[src])
-                        targets.append(label_map[tgt])
-                        values.append(r['count'])
-                        colors.append("rgba(44, 160, 44, 0.3)")
-                
-                fig = go.Figure(data=[go.Sankey(
-                    node = dict(
-                      pad = 15,
-                      thickness = 20,
-                      line = dict(color = "black", width = 0.5),
-                      label = labels,
-                      color = "lightgray"
-                    ),
-                    link = dict(
-                      source = sources,
-                      target = targets,
-                      value = values,
-                      color = colors
-                  ))])
-                  
-                fig.update_layout(title_text="Workforce Flow: Entry -> Rank -> Branch -> Pool", font_size=10, height=600)
-                st.plotly_chart(fig)
-        
-        with tab_ai:
-            st.markdown("### 🧠 What drives career patterns?")
-            st.info("The AI model learns different rules for different groups. Use the filters below to investigate the 'Laws of Promotion' for specific cohorts.")
-            
-            c_f1, c_f2, c_f3 = st.columns(3)
-            with c_f1:
-                ai_branch = st.selectbox("Branch", ["All"] + sorted(df['Branch'].unique()))
-            with c_f2:
-                ai_pool = st.selectbox("Pool", ["All"] + sorted(df['Pool'].unique()))
-            with c_f3:
-                ai_entry = st.selectbox("Entry Type", ["All"] + sorted(df['Entry_type'].unique()))
+            # Use standard Streamlit Dataframe for stability
+            st.dataframe(
+                df,
+                use_container_width=True,
+                height=500,
+                column_config={
+                    "Employee_ID": st.column_config.TextColumn("ID"),
+                    "Date_of_appointment": st.column_config.DateColumn("Appointed Since"),
+                    "Appointment_history": st.column_config.TextColumn("History", help="Full career path"),
+                }
+            )
 
-            if st.button("Run Global SHAP Analysis"):
-                filter_desc = f"{ai_branch}/{ai_pool}/{ai_entry}"
-                with st.spinner(f"Computing drivers for {filter_desc}..."):
-                     # Call get_global_context with all filters
-                     X_global = predictor.get_global_context(
-                         n=100, 
-                         branch_filter=ai_branch if ai_branch != "All" else None,
-                         pool_filter=ai_pool if ai_pool != "All" else None,
-                         entry_filter=ai_entry if ai_entry != "All" else None
-                     )
-                     
-                     if X_global is not None:
-                         expl_obj = predictor.xai.get_explanation_object(X_global)
-                         
-                         c1, c2 = st.columns(2)
-                         with c1:
-                             st.markdown("**Feature Impact (Beeswarm)**")
-                             fig_bee = explainer.create_global_beeswarm_plot(expl_obj)
-                             st.pyplot(fig_bee)
-                         with c2:
-                             st.markdown("**Feature Importance (Bar)**")
-                             fig_bar = explainer.create_global_bar_plot(expl_obj)
-                             st.pyplot(fig_bar)
-                     else:
-                         st.error(f"Insufficient data found for filter combination: {filter_desc}. Try relaxing constraints.")
+        # =====================================================================
+        # TAB 2: STATISTICS
+        # =====================================================================
+        with t_stats:
+            st.markdown("###  Workforce Analytics")
+            st.caption("High-level demographics, service duration, and rank distribution insights.")
+            
+            s_col1, s_col2, s_col3 = st.columns(3)
+            s_col1.metric("Total Personnel", len(df))
+            s_col2.metric("Branches", df['Branch'].nunique())
+            s_col3.metric("Avg Career Depth", int(df['Appointment_history'].apply(lambda x: len(str(x).split(','))).mean()))
+            
+            st.markdown("---")
+            
+            # --- New Charts ---
+            st.subheader(" Deep Dive Analytics")
+            
+            # 1. Prepare Data
+            stats_df = df.copy()
+            import re
+            
+            # Helper for Service Years (First Appt Year)
+            def get_start_year(hist):
+                # Find all years (YYYY)
+                matches = re.findall(r'\((\d{4})', str(hist))
+                if matches:
+                    # Return min year
+                    return min([int(m) for m in matches])
+                return 2025 # Fallback
+                
+            # Helper for Current Role Years
+            def get_curr_year(row):
+                val = str(row.get('Date_of_appointment', row.get('appointed_since', '')))
+                if len(val) >= 4 and val[:4].isdigit():
+                    return int(val[:4])
+                return 2025
+                
+            stats_df['Start_Year'] = stats_df['Appointment_history'].apply(get_start_year)
+            stats_df['Current_Role_Year'] = stats_df.apply(get_curr_year, axis=1)
+            
+            stats_df['Years_of_Service'] = 2025 - stats_df['Start_Year']
+            stats_df['Years_in_Current_Role'] = 2025 - stats_df['Current_Role_Year']
+            
+            # remove calculated negatives
+            stats_df = stats_df[stats_df['Years_of_Service'] >= 0]
+            stats_df = stats_df[stats_df['Years_in_Current_Role'] >= 0]
+            
+            c1, c2 = st.columns(2)
+            
+            with c1:
+                st.markdown("**⏳ Years of Service Distribution**")
+                # Histogram of Service Years
+                fig_service = px.histogram(
+                    stats_df, 
+                    x='Years_of_Service', 
+                    color='Branch',
+                    nbins=20,
+                    title="Workforce Experience Profile",
+                    labels={'Years_of_Service': 'Total Years of Service'},
+                    template="plotly_dark",
+                    barmode='stack'
+                )
+                st.plotly_chart(fig_service, use_container_width=True)
+                st.caption("Distribution of total career length across the force.")
+
+            with c2:
+                st.markdown("** Stagnation Analysis (Time in Rank)**")
+                # Box Plot of Years in Current Role by Rank
+                fig_stagnation = px.box(
+                    stats_df,
+                    x='Rank',
+                    y='Years_in_Current_Role',
+                    color='Rank',
+                    title="Time in Current Role by Rank",
+                    labels={'Years_in_Current_Role': 'Years in Role'},
+                    template="plotly_dark"
+                )
+                st.plotly_chart(fig_stagnation, use_container_width=True)
+                st.caption("How long officers have held their current rank/role.")
+
+            st.markdown("---")
+            
+            # Existing Charts
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.markdown("**Rank Distribution**")
+                fig_rank = px.bar(df['Rank'].value_counts(), orientation='h', template="plotly_dark", color_discrete_sequence=['#00CC96'])
+                st.plotly_chart(fig_rank, use_container_width=True)
+                
+            with col2:
+                st.markdown("**Branch Composition**")
+                fig_branch = px.pie(df, names='Branch', hole=0.4, template="plotly_dark")
+                st.plotly_chart(fig_branch, use_container_width=True)
+
+        # =====================================================================
+        # TAB 3: CAREER EXPLORER
+        # =====================================================================
+        with t_flow:
+            st.markdown("###  Detailed Career Explorer")
+            st.caption("Explore exact career paths. Use filters to drill down.")
+            
+            # --- 1. Advanced Filters ---
+            with st.expander(" Filter Population", expanded=True):
+                c1, c2, c3, c4 = st.columns(4)
+                all_branches = sorted(df['Branch'].unique())
+                sel_branches = c1.multiselect("Branch", all_branches, default=[all_branches[0]] if all_branches else [])
+                sel_pools = c2.multiselect("Pool", sorted(df['Pool'].unique()))
+                sel_ranks = c3.multiselect("Current Rank", sorted(df['Rank'].unique()))
+                sel_entries = c4.multiselect("Entry Type", sorted(df['Entry_type'].unique()))
+            
+            # Filter Data
+            filtered_df = df.copy()
+            if sel_branches: filtered_df = filtered_df[filtered_df['Branch'].isin(sel_branches)]
+            if sel_pools: filtered_df = filtered_df[filtered_df['Pool'].isin(sel_pools)]
+            if sel_ranks: filtered_df = filtered_df[filtered_df['Rank'].isin(sel_ranks)]
+            if sel_entries: filtered_df = filtered_df[filtered_df['Entry_type'].isin(sel_entries)]
+            
+            if filtered_df.empty:
+                st.warning("No records match these filters.")
+            else:
+                st.info(f"Analyzing {len(filtered_df)} officers...")
+                
+                with st.spinner("Tracing career histories..."):
+                    dp = DataProcessor()
+                    paths_list = []
+                    max_depth = 20
+                    
+                    # Store officer names associated with each path for tooltips
+                    path_objects = []
+                    
+                    for _, row in filtered_df.iterrows():
+                        hist = row.get('Appointment_history', '')
+                        parsed = dp.parse_history_column(hist)
+                        emp_name = row.get('Name', row['Employee_ID']) # Fallback if Name missing
+                        
+                        chain = []
+                        if parsed:
+                            parsed.sort(key=lambda x: x['start_date'] if pd.notna(x['start_date']) else pd.Timestamp.min)
+                            for p in parsed:
+                                t = str(p['title']).strip()
+                                chain.append(t)
+                        
+                        chain.append(str(row['current_appointment']).strip())
+                        
+                        clean = []
+                        for x in chain:
+                            if not clean or clean[-1] != x:
+                                clean.append(x)
+                        
+                        if len(clean) > max_depth:
+                            clean = clean[-max_depth:]
+                            
+                        path_objects.append({
+                            "path": clean,
+                            "name": emp_name
+                        })
+                    
+                    # --- Build ECharts Tree ---
+                    # Root
+                    tree = {"name": "Career Start", "children": []}
+                    
+                    # Helper to find child
+                    def find_child(node, name):
+                        for c in node['children']:
+                            if c['name'] == name: return c
+                        return None
+                    
+                    for obj in path_objects:
+                        curr = tree
+                        for step in obj['path']:
+                            child = find_child(curr, step)
+                            if not child:
+                                child = {"name": step, "children": [], "value": 0, "officers": []}
+                                curr['children'].append(child)
+                            child['value'] += 1
+                            child['officers'].append(obj['name'])
+                            curr = child
+                            
+                    # Prune or Format
+                    # Limit officers list in tooltip
+                    def format_tree(node):
+                        # Tooltip formatting
+                        off_list = node.get('officers', [])
+                        count = len(off_list)
+                        if count > 10:
+                            shown = off_list[:10]
+                            node['tooltip_html'] = f"{count} Officers:<br/>" + "<br/>".join(shown) + f"<br/>...and {count-10} more"
+                        else:
+                            node['tooltip_html'] = f"{count} Officers:<br/>" + "<br/>".join(off_list)
+                            
+                        for c in node['children']:
+                            format_tree(c)
+                            
+                    format_tree(tree)
+                    
+                    option = {
+                        "tooltip": {
+                            "trigger": "item",
+                            "triggerOn": "mousemove",
+                            "formatter": "{b}<br/>{c} records" 
+                        },
+                        "series": [
+                            {
+                                "type": "tree",
+                                "data": [tree],
+                                "layout": "orthogonal",
+                                "orient": "LR",
+                                "symbolSize": 7,
+                                "initialTreeDepth": 3,
+                                "label": {
+                                    "position": "left",
+                                    "verticalAlign": "middle",
+                                    "align": "right",
+                                    "fontSize": 10
+                                },
+                                "leaves": {
+                                    "label": {
+                                        "position": "right",
+                                        "verticalAlign": "middle",
+                                        "align": "left"
+                                    }
+                                },
+                                "expandAndCollapse": True,
+                                "animationDuration": 550,
+                                "animationDurationUpdate": 750
+                            }
+                        ]
+                    }
+                    st_echarts(option, height="700px")
+
+        # =====================================================================
+        # TAB 4: APPOINTMENTS MAP
+        # =====================================================================
+        with t_map:
+            st.markdown("###  Live Career Network")
+            st.caption("Direct visualization of career paths. Filters update the graph in real-time.")
+            
+            # 1. Direct Filtering
+            f_col1, f_col2, f_col3 = st.columns(3)
+            
+            all_b_vals = sorted(df['Branch'].unique())
+            all_r_vals = sorted(df['Rank'].unique())
+            
+            sel_b = f_col1.multiselect("Branches", all_b_vals, default=all_b_vals, key="map_new_b")
+            sel_r = f_col2.multiselect("Ranks", all_r_vals, default=all_r_vals, key="map_new_r")
+            
+            # Tuning
+            min_w = f_col3.slider("Min Traffic", 1, 50, 1, help="Hide paths with fewer than N officers")
+
+            # 2. Filter Data Frame
+            m_df = df.copy()
+            
+            if sel_b:
+                m_df = m_df[m_df['Branch'].isin(sel_b)]
+            if sel_r:
+                m_df = m_df[m_df['Rank'].isin(sel_r)]
+                
+            st.metric("Records Analysis", len(m_df))
+            
+            # 3. Graph Logic (Corner Layout + Running Text Tooltips)
+            if m_df.empty:
+                st.warning("No data found for these filters.")
+            else:
+                import networkx as nx
+                from streamlit_echarts import st_echarts
+                from collections import Counter, defaultdict
+                import re
+                import math
+
+                # Helper to normalize & extract date
+                def parse_role_date(t_str):
+                    t_str = str(t_str).strip()
+                    # Extract date if present
+                    date_match = re.search(r'\((\d{4})', t_str)
+                    year = int(date_match.group(1)) if date_match else 9999
+                    
+                    # Clean title
+                    clean = re.sub(r'\s*\(.*?\)', '', t_str)
+                    clean = re.sub(r'\s*\/.*', '', clean) 
+                    clean = re.sub(r'\s*USS .*', '', clean)
+                    clean = re.sub(r'\s*Starbase .*', '', clean) 
+                    return clean.strip(), year
+
+                transitions = []
+                node_meta = {} # store branch votes
+                node_officers = defaultdict(list) # list of details per node
+                
+                for _, row in m_df.iterrows():
+                    hist = row.get("Appointment_history", "")
+                    curr_b = row['Branch']
+                    off_name = row['Name']
+                    off_id = row['Employee_ID']
+                    off_rank = row['Rank']
+                    
+                    # Current Appt Year
+                    # Fix: Handle missing column name safely (dataset uses 'appointed_since')
+                    curr_date = str(row.get('Date_of_appointment', row.get('appointed_since', '')))
+                    curr_year = int(curr_date[:4]) if len(curr_date) >= 4 and curr_date[:4].isdigit() else 9999
+                    
+                    if not isinstance(hist, str): continue
+                    
+                    # Parse History
+                    raw_parts = [x.strip() for x in hist.split(',')]
+                    path_nodes = []
+                    
+                    for raw in raw_parts:
+                        role, year = parse_role_date(raw)
+                        final_yr = year if year != 9999 else "N/A"
+                        if len(role) > 2:
+                            path_nodes.append(role)
+                            # Add to officer record
+                            # Format: Rank Name (ID) (Branch) (Year)
+                            detail = f"{off_rank} {off_name} ({off_id}) ({curr_b}) ({final_yr})"
+                            node_officers[role].append((year, detail))
+                            
+                    # Add current
+                    curr_role, _ = parse_role_date(row['current_appointment'])
+                    final_curr_yr = curr_year if curr_year != 9999 else "N/A"
+                    if not path_nodes or path_nodes[-1] != curr_role:
+                        if len(curr_role) > 2:
+                            path_nodes.append(curr_role)
+                            detail = f"{off_rank} {off_name} ({off_id}) ({curr_b}) ({final_curr_yr})"
+                            node_officers[curr_role].append((curr_year, detail))
+
+                    # Metadata & Edges
+                    if len(path_nodes) >= 1:
+                        for p in path_nodes:
+                            if p not in node_meta: node_meta[p] = []
+                            node_meta[p].append(curr_b)
+                            
+                    if len(path_nodes) >= 2:
+                        for i in range(len(path_nodes)-1):
+                            transitions.append((path_nodes[i], path_nodes[i+1]))
+                
+                if not transitions:
+                    st.info("No transitions found in selected data.")
+                else:
+                    # Graph Construction
+                    G = nx.DiGraph()
+                    counts = Counter(transitions)
+                    
+                    for (u,v), w in counts.items():
+                        if w >= min_w:
+                            G.add_edge(u, v, weight=w)
+
+                    # Branch Stats
+                    unique_branches = sorted(list(set([b for votes in node_meta.values() for b in votes])))
+                    categories = [{"name": b} for b in unique_branches]
+                    
+                    # Identify Top 4 Branches
+                    branch_counts = Counter([b for votes in node_meta.values() for b in votes])
+                    top_branches = [b for b, c in branch_counts.most_common(4)]
+                    
+                    # --- CORNER LAYOUT STRATEGY ---
+                    # 4 Corners in normalized -1..1 space
+                    corners = [(-0.8, 0.8), (0.8, 0.8), (0.8, -0.8), (-0.8, -0.8)]
+                    centers = {}
+                    
+                    # Assign top branches to corners
+                    for i, b in enumerate(top_branches):
+                        centers[b] = corners[i]
+                        
+                    # Remaining branches in center or scattered?
+                    # Center (0,0) is fine, they will float in middle
+                    
+                    # 2. Assign initial positions based on dominant branch
+                    initial_pos = {}
+                    for n in G.nodes():
+                        votes = node_meta.get(n, [])
+                        if votes:
+                            b_mode = Counter(votes).most_common(1)[0][0]
+                            # Use corner if top branch, else 0,0
+                            cx, cy = centers.get(b_mode, (0,0))
+                            import random
+                            # Small jitter to prevent stacking
+                            initial_pos[n] = (cx + random.uniform(-0.1, 0.1), cy + random.uniform(-0.1, 0.1))
+                        else:
+                            initial_pos[n] = (0,0)
+
+                    # 3. Run Spring Layout
+                    # k=0.15 is standard. We use default scale=1.
+                    with st.spinner("Optimizing map (Corner Layout)..."):
+                        pos = nx.spring_layout(G, pos=initial_pos, k=0.2, iterations=100, seed=42)
+                    
+                    # Nodes
+                    echarts_nodes = []
+                    SCALE = 4000 # Expand to large coordinate space
+                    
+                    for n in G.nodes():
+                        x, y = pos[n]
+                        
+                        # Category
+                        votes = node_meta.get(n, [])
+                        if votes:
+                            b_mode = Counter(votes).most_common(1)[0][0]
+                            cat_idx = unique_branches.index(b_mode) if b_mode in unique_branches else 0
+                        else:
+                            cat_idx = 0
+                        
+                        # Tooltip Content (Running Text)
+                        raw_officers = node_officers.get(n, [])
+                        raw_officers.sort(key=lambda x: x[0]) # Sort by Year
+                        
+                        # Create comma separated list
+                        entries = [x[1] for x in raw_officers]
+                        
+                        # Limit length for performance/display
+                        if len(entries) > 50:
+                            entries = entries[:50] + [f"...and {len(entries)-50} more"]
+                            
+                        running_text = ", ".join(entries)
+                        
+                        header = f"<b>{n}</b> <span style='color:#aaa'>({unique_branches[cat_idx]})</span>"
+                        # Wrapper div
+                        tooltip_html = f"""
+                        <div style="width:350px; white-space:normal; font-family:sans-serif; font-size:11px; line-height:1.4;">
+                            {header}<br/>
+                            <hr style="margin:4px 0; border:0; border-top:1px solid #555;">
+                            {running_text}
+                        </div>
+                        """
+                            
+                        deg = G.degree(n)
+                        # Size scaling
+                        sz = min(10 + deg*1.5, 60)
+                        
+                        echarts_nodes.append({
+                            "name": n,
+                            "x": x * SCALE,
+                            "y": y * SCALE,
+                            "value": tooltip_html, # Store HTML in value
+                            "category": cat_idx,
+                            "symbolSize": sz,
+                            "draggable": True,
+                            "label": {"show": deg > 5},
+                            "tooltip": {"formatter": "{c}"} # Display HTML
+                        })
+                        
+                    # Links
+                    echarts_links = []
+                    for u, v, d in G.edges(data=True):
+                        w = d['weight']
+                        echarts_links.append({
+                            "source": u,
+                            "target": v,
+                            "value": w,
+                            "lineStyle": {"width": min(1 + w/2, 5)},
+                            "tooltip": {"formatter": "{b} (Traffic: {c})"}
+                        })
+                        
+                    # ECharts Option
+                    option = {
+                        "title": {"text": "Career Relationship Network", "subtext": "Clustered by Branch"},
+                        "tooltip": {
+                            "trigger": "item",
+                            "encode": {"tooltip": "value"}, # Ensure value is used
+                            "confine": True, # Keep tooltip inside canvas
+                            "textStyle": {"fontSize": 10}
+                        }, 
+                        "legend": [{"data": unique_branches, "orient": "horizontal", "bottom": 0}],
+                        "animationDuration": 1500,
+                        "animationEasingUpdate": "quinticInOut",
+                        "series": [{
+                            "name": "Roles",
+                            "type": "graph",
+                            "layout": "none",
+                            "data": echarts_nodes,
+                            "links": echarts_links,
+                            "categories": categories,
+                            "roam": True,
+                            "label": {
+                                "position": "right",
+                                "formatter": "{b}"
+                            },
+                            "labelLayout": {
+                                "hideOverlap": True
+                            },
+                            "scaleLimit": {
+                                "min": 0.1,
+                                "max": 5
+                            },
+                            "lineStyle": {
+                                "color": "source",
+                                "curveness": 0.3
+                            },
+                            "emphasis": {
+                                "focus": "adjacency",
+                                "lineStyle": {
+                                    "width": 10
+                                }
+                            }
+                        }]
+                    }
+                    
+                    st_echarts(option, height="800px")
+                    st.caption("**Tip**: Hover to see distinct officer history. Nodes are clustered by Branch.")
+                    
+        # =====================================================================
+        # TAB 5: VOID ANALYSIS
+        # =====================================================================
+        with t_void:
+            st.markdown("###  Critical Gap & Void Detection")
+            st.info("Identify branches or ranks with dangerous personnel shortages.")
+            
+            if 'Rank' in df.columns and 'Branch' in df.columns:
+                heatmap_data = pd.crosstab(df['Branch'], df['Rank'])
+                
+                sorter = ["Ensign", "Lieutenant (jg)", "Lieutenant", "Lieutenant Commander", "Commander", "Captain", "Commodore", "Rear Admiral", "Vice Admiral", "Admiral"]
+                existing_ranks = [r for r in sorter if r in heatmap_data.columns]
+                heatmap_data = heatmap_data[existing_ranks]
+                
+                fig_void = px.imshow(
+                    heatmap_data,
+                    text_auto=True,
+                    aspect="auto",
+                    color_continuous_scale="RdYlGn", 
+                    title="Officer Density Heatmap (Red = Potential Void)"
+                )
+                fig_void.update_layout(height=600)
+                st.plotly_chart(fig_void, use_container_width=True)
+                
+                voids = []
+                for b in heatmap_data.index:
+                    for r in heatmap_data.columns:
+                        val = heatmap_data.loc[b, r]
+                        if val < 3:
+                            voids.append(f"**{b}** - **{r}** ({val} officers)")
+                 
+                if voids:
+                    with st.expander(f"[WARNING] Critical Voids Detected ({len(voids)})", expanded=False):
+                        st.write(", ".join(voids))
+            else:
+                st.error("Missing Rank/Branch data.")
+
+        # --- TAB 3: ORG STRUCTURE ---
+        with t_org:
+            st.markdown("###  Organizational Unit Browser")
+            st.info("Drill down from high-level Units to individual Posts.")
+            
+            def extract_unit(appt):
+                if pd.isna(appt): return "Unknown", "Unknown"
+                s = str(appt)
+                if '/' in s:
+                    parts = s.split('/')
+                    left = parts[0].strip()
+                    post = parts[1].strip()
+                    return left, post
+                else:
+                    return s, "General Staff"
+
+            if 'Unit' not in df.columns:
+                # df[['Org_Unit', 'Org_Post']] = df['current_appointment'].apply(lambda x: pd.Series(extract_unit(x)))
+                # Using standard loop to avoid 'Unit' key error if apply fails or setting issues
+                res = df['current_appointment'].apply(extract_unit)
+                df['Org_Unit'] = [x[0] for x in res]
+                df['Org_Post'] = [x[1] for x in res]
+            
+            org_view = df.groupby(['Org_Unit', 'Org_Post']).size().reset_index(name='count')
+            
+            search_unit = st.text_input("Search Unit", "")
+            if search_unit:
+                org_view = org_view[org_view['Org_Unit'].str.contains(search_unit, case=False)]
+            
+            if len(org_view) > 0:
+                fig_tree = px.treemap(org_view, path=['Org_Unit', 'Org_Post'], values='count',
+                                      color='count', color_continuous_scale='Blues',
+                                      title="Organizational Command Structure")
+                fig_tree.update_layout(height=800)
+                fig_tree.update_traces(textinfo="label+value", root_color="lightgrey")
+                st.plotly_chart(fig_tree, use_container_width=True)
+                
+                st.divider()
+                st.markdown("#### Officer: Unit Roster")
+                sel_unit = st.selectbox("Select Unit to Inspect", sorted(org_view['Org_Unit'].unique()))
+                
+                if sel_unit:
+                    roster = df[df['Org_Unit'] == sel_unit]
+                    st.dataframe(roster[['Employee_ID', 'Rank', 'Name', 'current_appointment', 'Branch']], hide_index=True)
+            else:
+                st.warning("No units match search.")
+        
+        # =====================================================================
+        # TAB 7: APPOINTMENT TIMELINE (GANTT CHART)
+        # =====================================================================
+        with t_gantt:
+            st.markdown("### Temporal Appointment Timeline")
+            st.caption("Visualize when officers held which appointments over time")
+            
+            col_g1, col_g2 = st.columns(2)
+            with col_g1:
+                all_branches_g = ["All"] + sorted(df['Branch'].unique().tolist())
+                filter_branch_g = st.selectbox("Filter by Branch", all_branches_g, key="gantt_branch")
+            with col_g2:
+                max_officers_g = st.slider("Max Officers", 10, 100, 30, help="Limit for performance")
+            
+            st.info("\u2139\ufe0f This chart shows appointment timelines based on dates in appointment history.")
+            
+            try:
+                fig_gantt = create_appointment_gantt(
+                    df, 
+                    filter_branch=filter_branch_g if filter_branch_g != "All" else None,
+                    max_officers=max_officers_g
+                )
+                st.plotly_chart(fig_gantt, use_container_width=True)
+            except Exception as e:
+                st.error(f"Error: {e}")
+                st.caption("Ensure appointment history includes dates in format: Role (YYYY-MM-DD)")
+
+        # --- TAB 4: STATISTICS ---
+        with t_stats:
+            st.markdown("###  Dataset Demographics")
+            
+            k1, k2, k3, k4 = st.columns(4)
+            k1.metric("Total Officers", len(df))
+            k2.metric("Unique Roles", df['current_appointment'].nunique())
+            k3.metric("Branches", df['Branch'].nunique())
+            k4.metric("Avg Service", "N/A") 
+            
+            c1, c2 = st.columns(2)
+            with c1:
+                st.markdown("**Rank Distribution**")
+                st.bar_chart(df['Rank'].value_counts())
+            with c2:
+                st.markdown("**Branch Distribution**")
+                st.bar_chart(df['Branch'].value_counts())
+
+        # --- TAB 5: DATA BROWSER ---
+        with t_data:
+            st.markdown("###  Detailed Dataset Browser")
+            st.caption("Filter, sort, and analyze the raw officer data.")
+            
+            with st.expander(" Filters & Controls", expanded=True):
+                c1, c2, c3, c4 = st.columns(4)
+                with c1:
+                    all_ranks = sorted(df['Rank'].unique())
+                    sel_ranks_tab = st.multiselect("Filter Ranks", all_ranks, key="tab_rank")
+                with c2:
+                    all_branches = sorted(df['Branch'].unique())
+                    sel_branches_tab = st.multiselect("Filter Branches", all_branches, key="tab_branch")
+                with c3:
+                    search_term = st.text_input("Search (Name/Role)", key="tab_search")
+                with c4:
+                    all_cols = list(df.columns)
+                    vis_cols = st.multiselect("Visible Columns", all_cols, default=['Employee_ID', 'Rank', 'Name', 'current_appointment', 'Branch'])
+
+            filtered_tab_df = df.copy()
+            if sel_ranks_tab:
+                filtered_tab_df = filtered_tab_df[filtered_tab_df['Rank'].isin(sel_ranks_tab)]
+            if sel_branches_tab:
+                filtered_tab_df = filtered_tab_df[filtered_tab_df['Branch'].isin(sel_branches_tab)]
+            if search_term:
+                mask = filtered_tab_df['Name'].str.contains(search_term, case=False, na=False) | \
+                       filtered_tab_df['current_appointment'].str.contains(search_term, case=False, na=False)
+                filtered_tab_df = filtered_tab_df[mask]
+
+            m1, m2 = st.columns([1, 1])
+            m1.metric("Visible Rows", len(filtered_tab_df))
+            
+            st.data_editor(
+                filtered_tab_df[vis_cols], 
+                use_container_width=True,
+                height=600,
+                hide_index=True
+            )
             
     elif mode == "Simulation":
-        st.header("🧪 Experiments Lab")
+        st.header("Experiments Lab")
         st.markdown("Design hypothetical officers, tweak parameters, and analyze how the AI reacts to specific career profiles.")
         
         # Layout: Control Panel (Left), Results (Right)
@@ -1128,11 +1247,11 @@ def main():
                 pool = st.selectbox("Pool", sorted(df['Pool'].unique()))
                 entry = st.selectbox("Entry Type", sorted(df['Entry_type'].unique()))
             
-            st.markdown("### 2. Career Markers")
-            years_rank = st.slider("Time in Current Rank (Years)", 0.0, 10.0, 3.5, 0.5, help="Directly affects 'years_in_current_rank' feature.")
-            total_service = st.slider("Total Service (Years)", 0, 40, 8, help="Affects 'years_service' feature.")
+            # Background Defaults (User defined)
+            years_rank = 3.5
+            total_service = 8
             
-            st.markdown("### 3. History & Qualifications")
+            st.markdown("### 2. History & Qualifications")
             
             # Smart Role Selector (Context Aware)
             import json
@@ -1148,17 +1267,29 @@ def main():
             
             last_role = st.selectbox("Current Job Title", sorted(valid_roles), help="The text of the title matters for 'Title Similarity'.")
             
-            common_training = [
-                "Command School", "Advanced Tactical", "Warp Theory", 
-                "Diplomatic Protocol", "Bridge Officer Test", "Strategic Operations", 
-                "First Contact Procedures", "Engineering Classification", "Medical Administration",
-                "Department Head Course", "Executive Officer Course"
-            ]
+            # Dynamic Training List from Dataset
+            @st.cache_data
+            def extract_training_set(d_frame):
+                t_set = set()
+                # Optimised loop
+                # Use unique to reduce iteration if many duplicates
+                for item in d_frame['Training_history'].astype(str).unique():
+                    if item == 'nan': continue
+                    for part in item.split(','):
+                        # Clean: Remove parens with date e.g. "Course (Date)" -> "Course"
+                        clean = part.split('(')[0].strip()
+                        if len(clean) > 2:
+                            t_set.add(clean)
+                return sorted(list(t_set))
+
+            common_training = extract_training_set(df)
+            if not common_training: 
+                common_training = ["Bridge Officer Test", "Advanced Tactical"] # Fallback
             
-            training = st.multiselect("Completed Training", common_training, default=["Bridge Officer Test", "Advanced Tactical"])
+            training = st.multiselect("Completed Training", common_training, default=common_training[:2] if len(common_training) >= 2 else common_training)
             
             
-            run_btn = st.button("🚀 Run Prediction Analysis", type="primary", use_container_width=True)
+            run_btn = st.button(" Run Prediction Analysis", type="primary", use_container_width=True)
             
             # --- PREDICTION LOGIC (Session State) ---
             if run_btn:
@@ -1209,7 +1340,7 @@ def main():
                 sel_idx = None
             
         with col_results:
-            st.markdown("### 🔬 Analysis Console")
+            st.markdown("###  Analysis Console")
             
             if sel_idx is not None and 'lab_results' in st.session_state:
                 results = st.session_state['lab_results']
@@ -1218,6 +1349,19 @@ def main():
                 score = top_res['Confidence']
                 pred_role = top_res.get('role', top_res.get('Prediction', 'Unknown'))
                 
+                # FEATURE MAP for Insights
+                FEATURE_MAP = {
+                    'years_in_current_rank': 'Time in Current Rank',
+                    'years_service': 'Total Years of Service',
+                    'title_sim': 'Job Title Matching',
+                    'branch_match': 'Branch Alignment',
+                    'pool_match': 'Officer Pool Fit',
+                    'prior_title_prob': 'Historical Career Precedent',
+                    'rank_match': 'Rank Compatibility',
+                    'entry_match': 'Commission Entry Type',
+                    'training_match': 'Training Qualifications'
+                }
+                
                 # 1. Score Card
                 st.success(f"**Recommendation**: {pred_role}")
                 sc_col1, sc_col2 = st.columns(2)
@@ -1225,7 +1369,7 @@ def main():
                 sc_col2.metric("Raw AI Score", f"{top_res.get('_RawScore', 0):.2f}")
                 
                 # 2. Explainability
-                st.markdown("#### 📊 Decision Factors")
+                st.markdown("####  Decision Factors")
                 
                 feats = top_res.get('_Feats', {})
                 contribs = top_res.get('_Contribs', {})
@@ -1234,7 +1378,7 @@ def main():
                     base_v = top_res.get('_BaseVal', 0.0)
                     
                     # TABS: Individual vs Global
-                    t_ind, t_glob = st.tabs(["👤 Individual Analysis", "🌍 Global Model Insights"])
+                    t_ind, t_glob = st.tabs([" Individual Analysis", " Global Model Insights"])
                     
                     with t_ind:
                         # A. WATERFALL
@@ -1274,34 +1418,119 @@ def main():
 
                     # 3. Lab Notes
                     st.divider()
-                    st.markdown("#### 📝 Lab Notes")
-                    suggestions = []
+                    st.divider()
+                    st.markdown("####  Analysis Notes")
+                    notes = []
                     
-                    if feats.get('years_in_current_rank', 0) < 2.0 and score < 0.5:
-                        suggestions.append(f"⏱️ **Tenure**: Low time in rank ({years_rank} yrs) is likely hurting the score.")
-                    
-                    if feats.get('prior_title_prob', 0) == 0:
-                        suggestions.append(f"📜 **History**: The jump from '{last_role}' to '{pred_role}' has NO historical precedent.")
+                    # 1. Strength Assessment
+                    if score > 0.6:
+                        st.success(f"**Strong Candidate**: {score:.1%} confidence indicates a high match with historical patterns.")
+                    elif score > 0.3:
+                        st.warning(f"**Moderate Fit**: {score:.1%} confidence. Viable, but may have stronger competitors.")
                     else:
-                        suggestions.append(f"📜 **History**: Valid historical path found ({feats.get('prior_title_prob',0):.1%}).")
+                        st.error(f"**Low Probability**: {score:.1%} confidence. Atypical profile for this role.")
+                    
+                    # 2. Factor Analysis (Top Drivers)
+                    if contribs:
+                        # Sort by absolute impact
+                        sorted_c = sorted(contribs.items(), key=lambda x: x[1], reverse=True)
+                        pros = [k for k,v in sorted_c if v > 0.05][:3]
+                        cons = [k for k,v in sorted_c if v < -0.05][-3:]
                         
-                    if feats.get('branch_match') == 0:
-                        suggestions.append("🔀 **Branch**: Cross-branch move detected.")
-                        
-                    for note in suggestions:
-                        st.info(note)
+                        c1, c2 = st.columns(2)
+                        with c1:
+                            if pros:
+                                st.markdown("**[OK] Primary Strengths:**")
+                                for p in pros: 
+                                    label = FEATURE_MAP.get(p, p)
+                                    st.markdown(f"- **{label}**: Positive driver.")
+                            else:
+                                st.markdown("No distinct primary strengths.")
+                                
+                        with c2:
+                            if cons:
+                                st.markdown("**[WARNING] Key Risks:**")
+                                for c in cons: 
+                                    label = FEATURE_MAP.get(c, c)
+                                    st.markdown(f"- **{label}**: Negative impact.")
+                            else:
+                                st.markdown("No significant negative factors.")
+                            
+                    # 3. Context
+                    if feats.get('prior_title_prob', 0) > 0:
+                        st.info(f" **Precedent**: {feats.get('prior_title_prob'):.1%} of officers moved from *{last_role}* to this role.")
+                    elif feats.get('prior_title_prob', 0) == 0:
+                         st.info(f" **No Precedent**: Evaluating this move based on skills/branch similarity rather than direct history.")
                         
                 else:
                     st.warning("No XAI data available.")
             else:
-                st.info("👈 Configure your officer profile on the left and click 'Run Prediction Analysis' to see results.")
+                st.info(" Configure your officer profile on the left and click 'Run Prediction Analysis' to see results.")
             
     elif mode == "Billet Lookup":
-        st.header("Find Candidates for Role")
+        st.header("Billet Lookup")
+        st.info(" **Find the best candidates for a specific role**. The AI ranks officers by fit, considering career patterns, skills, branch/rank requirements, and historical precedents. Perfect for filling critical positions.")
         st.markdown("Reverse search: Select a target role to find the best fit officers.")
         
+        # 1. Filters for Target Role List
+        with st.expander(" Filter Target Role List", expanded=True):
+            bf_col1, bf_col2, bf_col3, bf_col4 = st.columns(4)
+            all_ranks_f = sorted(df['Rank'].unique())
+            all_branches_f = sorted(df['Branch'].unique())
+            
+            f_rank = bf_col1.selectbox("Filter by Role Rank", ["All"] + all_ranks_f)
+            f_branch = bf_col2.selectbox("Filter by Role Branch", ["All"] + all_branches_f)
+            f_min_inc = bf_col3.number_input("Min. Incumbents (History)", min_value=0, value=0, step=1, help="Show only roles with at least N historical/current incumbents.")
+            pattern_filter_billet = bf_col4.selectbox("Career Pattern", ["All", "Has Pattern", "High Confidence (>80%)", "No Pattern"])
+        
+        # 2. Prepare Role Options with Counts (Historical & Current)
+        @st.cache_data
+        def get_historical_counts(d_frame):
+            from collections import Counter
+            all_r = []
+            # Current
+            all_r.extend(d_frame['current_appointment'].dropna().astype(str).tolist())
+            # History
+            for h in d_frame['Appointment_history'].dropna().astype(str):
+                # Heuristic split by comma, clean dates e.g. "Role (Date)"
+                parts = h.split(',')
+                for p in parts:
+                    clean = p.split('(')[0].strip()
+                    if len(clean) > 2:
+                        all_r.append(clean)
+            return Counter(all_r)
+
         all_roles = sorted(predictor.target_encoder.classes_)
-        target_role = st.selectbox("Target Appointment", all_roles)
+        counts = get_historical_counts(df)
+        
+        valid_role_options = []
+        for r in all_roles:
+            # Check constraints match filter
+            const = predictor.constraints.get(r, {})
+            c_ranks = const.get('ranks', [])
+            c_branches = const.get('branches', [])
+            
+            # Apply Filters
+            if f_rank != "All" and c_ranks and f_rank not in c_ranks: continue
+            if f_branch != "All" and c_branches and f_branch not in c_branches: continue
+            
+            # Count incumbents
+            n = counts.get(r, 0)
+            if n < f_min_inc: continue # Filter by Min Incumbents
+            
+            valid_role_options.append((r, f"{r} ({n} incumbents)"))
+            
+        if not valid_role_options:
+            st.warning("No roles match the selected filters.")
+            target_role = None
+        else:
+            # Selectbox
+            sel_val = st.selectbox(
+                "Target Appointment", 
+                options=[x[0] for x in valid_role_options],
+                format_func=lambda x: next((v[1] for v in valid_role_options if v[0] == x), x)
+            )
+            target_role = sel_val
         
         # Show constraints for this role if available
         constraints = predictor.constraints.get(target_role, {})
@@ -1338,11 +1567,11 @@ def main():
                         for idx, row in match_df.iterrows():
                             # Header with Score
                             score = row['Confidence']
-                            score_color = "🟢" if score > 0.5 else "🟡" if score > 0.1 else "⚪"
+                            score_color = "[HIGH]" if score > 0.5 else "[MED]" if score > 0.1 else "[LOW]"
                             
                             with st.expander(f"{score_color} {score:.1%} | {row['Employee_ID']} - {row['Rank']} {row['Name']} ({row['Branch']}) - Currently {row.get('CurrentRole', 'Unknown')}"):
                                 # 1. Breakdown Chart
-                                st.markdown("#### 📊 Why this recommendation?")
+                                st.markdown("#### Why this recommendation?")
                                 feats = row.get('_Feats', {})
                                 if feats:
                                     
@@ -1368,65 +1597,34 @@ def main():
                                     m_re = metrics.get('Rank & Entry Fit', {'value': '-', 'desc': 'No Data'})
                                     c5.metric("Rank & Entry", m_re['value'], help=m_re['desc'])
                                     
-                                    # Deep Dive XAI
+                                    # Deep Dive XAI - NEW IMPLEMENTATION
                                     if contribs:
-                                        with st.expander("🔍 Deep Dive Analysis (XAI)"):
-                                            st.markdown("This chart shows exactly how each feature pushed the score up (Green) or down (Red).")
-                                            
-                                            # TABS
-                                            xb_t1, xb_t2 = st.tabs(["Waterfall", "Force Plot"])
-                                            
-                                            with xb_t1:
-                                                # Pass Base Value for accurate Waterfall starting point
-                                                base_v = row.get('_BaseVal', 0.0)
-                                                # Pass feats for tooltips
-                                                fig_wf = explainer.create_shap_waterfall(contribs, base_value=base_v, feats=feats)
-                                                st.plotly_chart(fig_wf, use_container_width=True, key=f"xai_billet_{idx}_{row['Employee_ID']}")
-                                            
-                                            with xb_t2:
-                                                try:
-                                                    force_df = pd.DataFrame([feats])
-                                                    force_shap = pd.DataFrame([contribs])
-                                                    common_cols = force_df.columns.intersection(force_shap.columns)
-                                                    html = explainer.create_force_plot_html(
-                                                        base_value=row.get('_BaseVal', 0.0),
-                                                        shap_values=force_shap[common_cols].values[0],
-                                                        features=force_df[common_cols]
-                                                    )
-                                                    import streamlit.components.v1 as components
-                                                    components.html(html, height=120, scrolling=True)
-                                                except Exception as e:
-                                                    st.error(f"Force Plot Error: {e}")
+                                        display_xai_section(
+                                            predictor=predictor,
+                                            explainer=explainer,
+                                            officer_data=row,
+                                            target_role=target_role,
+                                            score=score,
+                                            contribs=contribs,
+                                            base_value=row.get('_BaseVal', 0.0),
+                                            feats=feats,
+                                            mode="billet"
+                                        )
                                 
-                                # 2. Historical Precedents
-                                st.markdown("#### 📜 Historical Precedents")
+                                # 2. Relevant Prior Experience (Incumbent Overlap)
+                                st.markdown("####  Relevant Prior Experience")
+                                st.caption("Based on the careers of previous incumbents, these roles in the candidate's history are strong qualifiers:")
                                 
-                                # Use exact title from Predictor context (matches Tooltip)
-                                ctx = feats.get('_Context', {})
-                                curr_clean = ctx.get('From_Title')
+                                rel_exp = explainer.get_relevant_experience(target_role, row.get('Appointment_history', ''))
                                 
-                                # Semantic fallback if needed
-                                if not curr_clean:
-                                    raw = row.get('Appointment_history', '')
-                                    if raw:
-                                        import re
-                                        parts = raw.split('>')
-                                        if parts:
-                                            # last part
-                                            curr_clean = parts[-1].strip()
-                                        else:
-                                            # try regex on Appointment history
-                                            pass
-                                
-                                if curr_clean:
-                                    precedents = explainer.get_precedents(curr_clean, target_role)
-                                    if precedents:
-                                        st.write(f"Officers who moved from **{curr_clean}** to **{target_role}**:")
-                                        cols = ['Employee_ID', 'Rank', 'Name', 'Branch', 'Pool', 'Entry_type', 'Appointment_history', 'Training_history']
-                                        st.dataframe(pd.DataFrame(precedents)[cols], hide_index=True)
-                                    else:
-                                        st.caption("No exact historical precedents found.")
+                                if rel_exp:
+                                    for r in rel_exp:
+                                        st.info(f"**{r['role']}**: {r['desc']}")
+                                else:
+                                    st.caption("No specific feeder roles found in candidate history matching previous incumbents.")
+                    else:
+                        st.warning("No candidates met the confidence threshold for this specific role. Try adjusting filters or the 'Min Incumbents' setting.")
 
 if __name__ == "__main__":
     main()
-                                
+

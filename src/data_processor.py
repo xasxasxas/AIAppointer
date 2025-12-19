@@ -8,7 +8,11 @@ class DataProcessor:
         # Regex to capture: Title (Start - End)
         # Using non-greedy .*? to capture title up to the date parenthesis
         # CHANGED: \s+ to \s* to handle "Title(Date)" without space
-        self.entry_pattern = re.compile(r'(.*?)\s*\((\d{2}\s+[A-Z]{3}\s+\d{4})\s*-\s*(.*?)\)')
+        # Regex to capture: Title (Start - End)
+        # Relaxed regex to capture any date-like string in the first position
+        # Was: (\d{2}\s+[A-Z]{3}\s+\d{4})
+        # Now: ([\w\s\/-]+?) to capture DD MMM YYYY, YYYY-MM-DD, DD/MM/YYYY
+        self.entry_pattern = re.compile(r'(.*?)\s*\(([\w\s\/-]+?)\s*-\s*(.*?)\)')
         
     def parse_date(self, date_str):
         """Parses dates like '25 NOV 1975' or '25/11/1975'. Returns datetime object or NaT."""
