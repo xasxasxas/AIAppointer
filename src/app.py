@@ -531,7 +531,7 @@ def main():
         import plotly.express as px
         from src.data_processor import DataProcessor
         from streamlit_echarts import st_echarts
-        from src.gantt_viz import create_appointment_gantt, create_role_timeline
+        from src.gantt_viz import create_comprehensive_officer_timeline, create_billet_occupancy_timeline
         import networkx as nx
         
         # Tabs
@@ -1151,26 +1151,77 @@ def main():
         # =====================================================================
         with t_gantt:
             st.markdown("### Temporal Appointment Timeline")
-            st.caption("Visualize when officers held which appointments over time")
+            st.caption("Complete HR temporal view: appointments, training, and promotions")
             
-            col_g1, col_g2 = st.columns(2)
-            with col_g1:
+            # View selector
+            view_mode = st.radio(
+                "View Mode",
+                ["By Officer", "By Billet/Position"],
+                horizontal=True,
+                help="Officer view shows complete career timeline per person. Billet view shows who held each position over time."
+            )
+            
+            # Filters
+            col_f1, col_f2, col_f3 = st.columns(3)
+            with col_f1:
                 all_branches_g = ["All"] + sorted(df['Branch'].unique().tolist())
                 filter_branch_g = st.selectbox("Filter by Branch", all_branches_g, key="gantt_branch")
-            with col_g2:
-                max_officers_g = st.slider("Max Officers", 10, 100, 30, help="Limit for performance")
+            with col_f2:
+                start_date_g = st.date_input("Start Date (Optional)", value=None, key="gantt_start")
+            with col_f3:
+                end_date_g = st.date_input("End Date (Optional)", value=None, key="gantt_end")
             
-            st.info("\u2139\ufe0f This chart shows appointment timelines based on dates in appointment history.")
+            # Convert dates
+            start_dt = datetime.combine(start_date_g, datetime.min.time()) if start_date_g else None
+            end_dt = datetime.combine(end_date_g, datetime.max.time()) if end_date_g else None
+            
+            # Legend
+            if view_mode == "By Officer":
+                st.info("**Legend:** Blue bars = Appointments | Green diamonds = Training | Gold stars = Promotions")
+            else:
+                st.info("**Legend:** Each row shows a position/billet. Bars show when different officers held that position.")
             
             try:
-                fig_gantt = create_appointment_gantt(
-                    df, 
-                    filter_branch=filter_branch_g if filter_branch_g != "All" else None,
-                    max_officers=max_officers_g
-                )
+                if view_mode == "By Officer":
+                    fig_gantt = create_comprehensive_officer_timeline(
+                        df,
+                        filter_branch=filter_branch_g if filter_branch_g != "All" else None,
+                        start_date=start_dt,
+                        end_date=end_dt
+                    )
+                else:
+                    fig_gantt = create_billet_occupancy_timeline(
+                        df,
+                        filter_branch=filter_branch_g if filter_branch_g != "All" else None,
+                        start_date=start_dt,
+                        end_date=end_dt
+                    )
+                
                 st.plotly_chart(fig_gantt, use_container_width=True)
+                
+                # Usage instructions
+                with st.expander("How to use this chart"):
+                    st.markdown("""
+                    **Interactions:**
+                    - **Hover** over bars to see details
+                    - **Zoom** by dragging on the timeline
+                    - **Pan** by holding shift and dragging
+                    - **Reset** by double-clicking
+                    
+                    **By Officer View:**
+                    - Each row = one officer's complete career
+                    - Blue bars = appointment periods
+                    - Green diamonds = training courses
+                    - Gold stars = promotions
+                    
+                    **By Billet View:**
+                    - Each row = one position/billet
+                    - Shows succession of officers over time
+                    - Identifies gaps in coverage
+                    - Color-coded by branch
+                    """)
             except Exception as e:
-                st.error(f"Error: {e}")
+                st.error(f"Error creating chart: {e}")
                 st.caption("Ensure appointment history includes dates in format: Role (YYYY-MM-DD)")
 
         # --- TAB 4: STATISTICS ---

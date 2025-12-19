@@ -1,5 +1,6 @@
 """
-Gantt Chart Visualization for Temporal Appointment Analysis
+Enhanced Gantt Chart Visualization for Complete HR Temporal Analysis
+Shows appointments, training, and promotions in comprehensive timeline
 """
 import pandas as pd
 import plotly.express as px
@@ -9,17 +10,7 @@ import re
 
 
 def parse_appointment_with_dates(appointment_history_str):
-    """
-    Parse appointment history string to extract roles with dates.
-    
-    Format expected: "Role1 (Date1), Role2 (Date2), ..."
-    
-    Args:
-        appointment_history_str: String containing appointment history
-        
-    Returns:
-        List of dicts with 'title', 'start_date', 'end_date'
-    """
+    """Parse appointment history string to extract roles with dates."""
     if not isinstance(appointment_history_str, str) or not appointment_history_str:
         return []
     
@@ -31,18 +22,14 @@ def parse_appointment_with_dates(appointment_history_str):
         if not item:
             continue
         
-        # Extract title and date using regex
-        # Pattern: "Title (Date)" or just "Title"
         match = re.match(r'(.+?)\s*\(([^)]+)\)', item)
         
         if match:
             title = match.group(1).strip()
             date_str = match.group(2).strip()
-            
-            # Try to parse date (various formats)
             start_date = parse_date_flexible(date_str)
             
-            # End date is the start of next appointment, or "Present" if last
+            # End date is the start of next appointment
             if i < len(items) - 1:
                 next_item = items[i + 1].strip()
                 next_match = re.match(r'(.+?)\s*\(([^)]+)\)', next_item)
@@ -51,7 +38,7 @@ def parse_appointment_with_dates(appointment_history_str):
                 else:
                     end_date = None
             else:
-                end_date = None  # Current/last appointment
+                end_date = None
             
             appointments.append({
                 'title': title,
@@ -62,30 +49,66 @@ def parse_appointment_with_dates(appointment_history_str):
     return appointments
 
 
+def parse_training_with_dates(training_history_str):
+    """Parse training history to extract courses with dates."""
+    if not isinstance(training_history_str, str) or not training_history_str:
+        return []
+    
+    trainings = []
+    items = training_history_str.split(',')
+    
+    for item in items:
+        item = item.strip()
+        if not item:
+            continue
+        
+        match = re.match(r'(.+?)\s*\(([^)]+)\)', item)
+        if match:
+            course = match.group(1).strip()
+            date_str = match.group(2).strip()
+            date = parse_date_flexible(date_str)
+            
+            if date:
+                trainings.append({'course': course, 'date': date})
+    
+    return trainings
+
+
+def detect_promotions(appointment_history):
+    """Detect promotions by analyzing rank changes."""
+    promotions = []
+    rank_order = ['Ensign', 'Lieutenant', 'Lt. Commander', 'Commander', 'Captain', 'Admiral']
+    
+    for i in range(len(appointment_history) - 1):
+        curr_title = appointment_history[i]['title']
+        next_title = appointment_history[i + 1]['title']
+        
+        curr_rank = None
+        next_rank = None
+        
+        for rank in rank_order:
+            if rank.lower() in curr_title.lower():
+                curr_rank = rank
+            if rank.lower() in next_title.lower():
+                next_rank = rank
+        
+        if curr_rank and next_rank and rank_order.index(next_rank) > rank_order.index(curr_rank):
+            promotions.append({
+                'from_rank': curr_rank,
+                'to_rank': next_rank,
+                'date': appointment_history[i + 1]['start_date'],
+                'title': next_title
+            })
+    
+    return promotions
+
+
 def parse_date_flexible(date_str):
-    """
-    Parse date string in various formats.
-    
-    Supports:
-    - YYYY-MM-DD
-    - YYYY-MM
-    - YYYY
-    - Stardate formats
-    
-    Returns:
-        datetime object or None
-    """
+    """Parse date string in various formats."""
     if not date_str:
         return None
     
-    # Try standard formats
-    formats = [
-        '%Y-%m-%d',
-        '%Y-%m',
-        '%Y',
-        '%m/%d/%Y',
-        '%d/%m/%Y'
-    ]
+    formats = ['%Y-%m-%d', '%Y-%m', '%Y', '%m/%d/%Y', '%d/%m/%Y']
     
     for fmt in formats:
         try:
@@ -93,7 +116,6 @@ def parse_date_flexible(date_str):
         except ValueError:
             continue
     
-    # Try to extract just year if present
     year_match = re.search(r'(\d{4})', date_str)
     if year_match:
         try:
@@ -104,139 +126,83 @@ def parse_date_flexible(date_str):
     return None
 
 
-def create_appointment_gantt(df, filter_branch=None, filter_role=None, max_officers=50):
+def create_comprehensive_officer_timeline(df, filter_branch=None, start_date=None, end_date=None):
     """
-    Create temporal Gantt chart of appointments.
-    
-    Args:
-        df: DataFrame with officer data
-        filter_branch: Optional branch filter
-        filter_role: Optional role filter
-        max_officers: Maximum number of officers to display
-        
-    Returns:
-        Plotly figure
+    Create comprehensive Gantt chart showing appointments, training, and promotions for each officer.
     """
-    gantt_data = []
+    timeline_data = []
+    training_markers = []
+    promotion_markers = []
     
-    # Filter dataframe
     filtered_df = df.copy()
     if filter_branch and filter_branch != "All":
         filtered_df = filtered_df[filtered_df['Branch'] == filter_branch]
     
-    # Limit to max officers for performance
-    filtered_df = filtered_df.head(max_officers)
-    
     for _, officer in filtered_df.iterrows():
+        officer_name = f"{officer.get('Name', 'Unknown')} ({officer.get('Employee_ID', 'N/A')})"
+        
         appointments = parse_appointment_with_dates(officer.get('Appointment_history', ''))
+        trainings = parse_training_with_dates(officer.get('Training_history', ''))
+        promotions = detect_promotions(appointments)
         
         for appt in appointments:
             if not appt['start_date']:
                 continue
             
-            # Filter by role if specified
-            if filter_role and filter_role != "All" and appt['title'] != filter_role:
+            if start_date and appt['start_date'] < start_date:
+                continue
+            if end_date and appt['start_date'] > end_date:
                 continue
             
-            # Use current date if no end date
-            end_date = appt['end_date'] if appt['end_date'] else datetime.now()
+            end_date_val = appt['end_date'] if appt['end_date'] else datetime.now()
             
-            gantt_data.append({
-                'Officer': f"{officer.get('Name', 'Unknown')} ({officer.get('Employee_ID', 'N/A')})",
-                'Role': appt['title'],
+            timeline_data.append({
+                'Officer': officer_name,
+                'Task': appt['title'],
                 'Start': appt['start_date'],
-                'End': end_date,
+                'End': end_date_val,
+                'Type': 'Appointment',
                 'Branch': officer.get('Branch', 'Unknown'),
-                'Rank': officer.get('Rank', 'Unknown'),
-                'Employee_ID': officer.get('Employee_ID', 'N/A')
+                'Rank': officer.get('Rank', 'Unknown')
             })
-    
-    if not gantt_data:
-        # Return empty figure with message
-        fig = go.Figure()
-        fig.add_annotation(
-            text="No appointment data with valid dates found.<br>Ensure appointment history includes dates in format: Role (YYYY-MM-DD)",
-            xref="paper", yref="paper",
-            x=0.5, y=0.5, showarrow=False,
-            font=dict(size=14)
-        )
-        fig.update_layout(
-            title="Temporal Appointment Timeline",
-            xaxis=dict(visible=False),
-            yaxis=dict(visible=False),
-            height=400
-        )
-        return fig
-    
-    gantt_df = pd.DataFrame(gantt_data)
-    
-    # Sort by start date
-    gantt_df = gantt_df.sort_values('Start')
-    
-    # Create Gantt chart
-    fig = px.timeline(
-        gantt_df,
-        x_start='Start',
-        x_end='End',
-        y='Officer',
-        color='Branch',
-        hover_data=['Role', 'Rank', 'Employee_ID'],
-        title=f'Temporal Appointment Timeline ({len(gantt_df)} appointments)',
-        labels={'Officer': 'Officer', 'Start': 'Start Date', 'End': 'End Date'}
-    )
-    
-    # Update layout
-    fig.update_yaxes(categoryorder='total ascending', title='Officers')
-    fig.update_xaxes(title='Timeline')
-    fig.update_layout(
-        height=max(600, len(gantt_df) * 20),  # Dynamic height based on data
-        showlegend=True,
-        hovermode='closest'
-    )
-    
-    return fig
-
-
-def create_role_timeline(df, role_name):
-    """
-    Create timeline showing all officers who held a specific role over time.
-    
-    Args:
-        df: DataFrame with officer data
-        role_name: Name of the role to analyze
         
-    Returns:
-        Plotly figure
-    """
-    timeline_data = []
-    
-    for _, officer in df.iterrows():
-        appointments = parse_appointment_with_dates(officer.get('Appointment_history', ''))
+        for training in trainings:
+            if start_date and training['date'] < start_date:
+                continue
+            if end_date and training['date'] > end_date:
+                continue
+            
+            training_markers.append({
+                'Officer': officer_name,
+                'Date': training['date'],
+                'Course': training['course']
+            })
         
-        for appt in appointments:
-            if appt['title'] == role_name and appt['start_date']:
-                end_date = appt['end_date'] if appt['end_date'] else datetime.now()
-                
-                timeline_data.append({
-                    'Officer': f"{officer.get('Name', 'Unknown')}",
-                    'Start': appt['start_date'],
-                    'End': end_date,
-                    'Branch': officer.get('Branch', 'Unknown'),
-                    'Rank': officer.get('Rank', 'Unknown'),
-                    'Employee_ID': officer.get('Employee_ID', 'N/A')
-                })
+        for promo in promotions:
+            if not promo['date']:
+                continue
+            if start_date and promo['date'] < start_date:
+                continue
+            if end_date and promo['date'] > end_date:
+                continue
+            
+            promotion_markers.append({
+                'Officer': officer_name,
+                'Date': promo['date'],
+                'From': promo['from_rank'],
+                'To': promo['to_rank']
+            })
     
     if not timeline_data:
         fig = go.Figure()
         fig.add_annotation(
-            text=f"No historical data found for role: {role_name}",
-            xref="paper", yref="paper",
-            x=0.5, y=0.5, showarrow=False
+            text="No appointment data with valid dates found.<br>Ensure appointment history includes dates in format: Role (YYYY-MM-DD)",
+            xref="paper", yref="paper", x=0.5, y=0.5, showarrow=False, font=dict(size=14)
         )
+        fig.update_layout(title="Officer Timeline", height=400)
         return fig
     
     timeline_df = pd.DataFrame(timeline_data)
-    timeline_df = timeline_df.sort_values('Start')
     
     fig = px.timeline(
         timeline_df,
@@ -244,12 +210,108 @@ def create_role_timeline(df, role_name):
         x_end='End',
         y='Officer',
         color='Branch',
-        hover_data=['Rank', 'Employee_ID'],
-        title=f'Officers Who Held Role: {role_name}',
-        labels={'Officer': 'Officer', 'Start': 'Start Date', 'End': 'End Date'}
+        hover_data=['Task', 'Rank'],
+        title=f'Complete Officer Timeline ({len(timeline_df)} appointments)'
     )
     
-    fig.update_yaxes(categoryorder='total ascending')
-    fig.update_layout(height=max(400, len(timeline_df) * 30))
+    # Add training markers (green diamonds)
+    for training in training_markers:
+        fig.add_trace(go.Scatter(
+            x=[training['Date']],
+            y=[training['Officer']],
+            mode='markers',
+            marker=dict(symbol='diamond', size=12, color='green', line=dict(width=2, color='darkgreen')),
+            name='Training',
+            hovertext=f"Training: {training['Course']}",
+            showlegend=False
+        ))
+    
+    # Add promotion markers (gold stars)
+    for promo in promotion_markers:
+        fig.add_trace(go.Scatter(
+            x=[promo['Date']],
+            y=[promo['Officer']],
+            mode='markers',
+            marker=dict(symbol='star', size=15, color='gold', line=dict(width=2, color='orange')),
+            name='Promotion',
+            hovertext=f"Promotion: {promo['From']} → {promo['To']}",
+            showlegend=False
+        ))
+    
+    fig.update_yaxes(categoryorder='total ascending', title='Officers')
+    fig.update_xaxes(title='Timeline')
+    fig.update_layout(
+        height=max(600, len(timeline_df['Officer'].unique()) * 40),
+        showlegend=True,
+        hovermode='closest'
+    )
+    
+    return fig
+
+
+def create_billet_occupancy_timeline(df, filter_branch=None, start_date=None, end_date=None):
+    """
+    Create Gantt chart showing which officers held each billet over time.
+    """
+    billet_data = []
+    
+    filtered_df = df.copy()
+    if filter_branch and filter_branch != "All":
+        filtered_df = filtered_df[filtered_df['Branch'] == filter_branch]
+    
+    for _, officer in filtered_df.iterrows():
+        officer_name = f"{officer.get('Name', 'Unknown')} ({officer.get('Employee_ID', 'N/A')})"
+        appointments = parse_appointment_with_dates(officer.get('Appointment_history', ''))
+        
+        for appt in appointments:
+            if not appt['start_date']:
+                continue
+            
+            if start_date and appt['start_date'] < start_date:
+                continue
+            if end_date and appt['start_date'] > end_date:
+                continue
+            
+            end_date_val = appt['end_date'] if appt['end_date'] else datetime.now()
+            
+            billet_data.append({
+                'Billet': appt['title'],
+                'Officer': officer_name,
+                'Start': appt['start_date'],
+                'End': end_date_val,
+                'Branch': officer.get('Branch', 'Unknown'),
+                'Rank': officer.get('Rank', 'Unknown')
+            })
+    
+    if not billet_data:
+        fig = go.Figure()
+        fig.add_annotation(
+            text="No billet occupancy data found",
+            xref="paper", yref="paper", x=0.5, y=0.5, showarrow=False
+        )
+        fig.update_layout(title="Billet Occupancy Timeline", height=400)
+        return fig
+    
+    billet_df = pd.DataFrame(billet_data)
+    billet_df = billet_df.sort_values(['Billet', 'Start'])
+    
+    fig = px.timeline(
+        billet_df,
+        x_start='Start',
+        x_end='End',
+        y='Billet',
+        color='Branch',
+        hover_data=['Officer', 'Rank'],
+        title=f'Billet Occupancy Timeline ({len(billet_df)} assignments)',
+        labels={'Billet': 'Position', 'Officer': 'Officer'}
+    )
+    
+    fig.update_yaxes(categoryorder='total ascending', title='Billets/Positions')
+    fig.update_xaxes(title='Timeline')
+    fig.update_layout(
+        height=max(600, len(billet_df['Billet'].unique()) * 40),
+        showlegend=True,
+        hovermode='closest'
+    )
     
     return fig
