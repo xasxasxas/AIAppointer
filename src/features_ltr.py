@@ -171,11 +171,29 @@ class LTRFeatureEngineer:
         Returns:
             List of role titles in chronological order
         """
+        import re
+        
         # Try to get from snapshot_history first (most complete)
         if 'snapshot_history' in officer_row and officer_row['snapshot_history']:
             history = [h.get('title', '') for h in officer_row['snapshot_history'] if h.get('title')]
             if history:
                 return history
+        
+        # NEW: Parse full Appointment_history string for complete career sequence
+        if 'Appointment_history' in officer_row and officer_row['Appointment_history']:
+            hist_raw = str(officer_row['Appointment_history'])
+            # Split by comma (each appointment is "Title (Date - Date)")
+            items = hist_raw.split(',')
+            titles = []
+            for item in items:
+                # Remove dates in parentheses: "XYZ (01 JAN 2020 - )" -> "XYZ"
+                clean = re.sub(r'\s*\(.*?\)', '', item).strip()
+                if clean and clean != 'Unknown':
+                    # Avoid duplicates in sequence
+                    if not titles or titles[-1] != clean:
+                        titles.append(clean)
+            if len(titles) >= 2:  # Need at least 2 roles for meaningful Markov
+                return titles
         
         # Fallback: construct from last_role_title and current_appointment
         history = []

@@ -233,6 +233,21 @@ class Predictor:
                     if matches:
                         # print(f"Confidence Fix: Fuzzy Mapped '{curr}' -> '{matches[0]}'")
                         row['last_role_title'] = matches[0]
+                    else:
+                        # 4. NEW: TF-IDF Similarity Fallback
+                        # Uses existing TF-IDF vectorizer to find semantically similar title
+                        if hasattr(self, 'ltr_fe') and self.ltr_fe.tfidf:
+                            try:
+                                from sklearn.metrics.pairwise import cosine_similarity
+                                curr_vec = self.ltr_fe.tfidf.transform([curr])
+                                all_vecs = self.ltr_fe.tfidf.transform(known_titles)
+                                sims = cosine_similarity(curr_vec, all_vecs)[0]
+                                best_idx = np.argmax(sims)
+                                if sims[best_idx] > 0.3:  # Threshold for semantic match
+                                    row['last_role_title'] = known_titles[best_idx]
+                                    # print(f"TF-IDF Matched '{curr}' -> '{known_titles[best_idx]}' (sim={sims[best_idx]:.2f})")
+                            except Exception as e:
+                                pass  # Fallback to original if TF-IDF fails
 
         # Enrich if needed (snapshot_history is from simulation)
         if 'snapshot_history' in row:
@@ -303,15 +318,11 @@ class Predictor:
                          continue
                          
                      if attempt == 'strict':
-                        # 2. MATCH CHECK (Branch)
+                        # 2. MATCH CHECK (Branch) - STRICT ENFORCEMENT
                         branches = role_cons.get('branches', [])
                         if branches and current_branch:
-                            # Science Relaxation (Partial)
-                            if current_branch == "Science":
-                                 allowed = ["Science", "Engineering", "Tactical Systems"]
-                                 if not any(b in allowed for b in branches):
-                                     continue
-                            elif current_branch not in branches:
+                            # Strict: Officer branch must be in allowed branches
+                            if current_branch not in branches:
                                 continue
                         
                         # 3. ENTRY CHECK
@@ -413,23 +424,20 @@ class Predictor:
                 print(f"⚠️ Batch XAI Score Failed: {e}")
                 # Fallback to raw_scores
         
-        # Min-Max Normalization to guarantee meaningful scores
-        # This ensures the best candidate gets high score and worst gets low but non-zero
-        if len(raw_scores) > 1:
-            min_score = np.min(raw_scores)
-            max_score = np.max(raw_scores)
-            score_range = max_score - min_score
-            
-            if score_range > 0:
-                # Normalize to 0.1-0.9 range to avoid extremes
-                scores = 0.1 + 0.8 * (raw_scores - min_score) / score_range
-            else:
-                # All scores identical - give them all 0.5
-                scores = np.full_like(raw_scores, 0.5)
-        else:
-            # Single candidate - give moderate score
-            scores = np.array([0.5])
-
+        # --- SIGMOID CALIBRATION ---
+        # Sigmoid converts log-odds to probabilities naturally
+        # This provides meaningful scores reflecting true model confidence
+        def sigmoid(x):
+            # Clip to prevent overflow
+            x_clipped = np.clip(x, -20, 20)
+            return 1 / (1 + np.exp(-x_clipped))
+        
+        # Apply sigmoid to raw_scores (log-odds from LightGBM)
+        scores = sigmoid(raw_scores)
+        
+        # Scale to 5%-95% range to avoid extreme 0% or 100%
+        scores = 0.05 + 0.9 * scores
+        
         
         # 3. Rank and Format
         scored_candidates = []
@@ -591,22 +599,27 @@ class Predictor:
             except Exception as e:
                 print(f"⚠️ Batch XAI Score Failed in Billet Lookup: {e}")
 
-        # Min-Max Normalization to guarantee meaningful scores
-        # This ensures the best candidate gets high score and worst gets low but non-zero
-        if len(raw_scores) > 1:
-            min_score = np.min(raw_scores)
-            max_score = np.max(raw_scores)
-            score_range = max_score - min_score
-            
-            if score_range > 0:
-                # Normalize to 0.1-0.9 range to avoid extremes
-                scores = 0.1 + 0.8 * (raw_scores - min_score) / score_range
-            else:
-                # All scores identical - give them all 0.5
-                scores = np.full_like(raw_scores, 0.5)
-        else:
-            # Single candidate - give moderate score
-            scores = np.array([0.5])
+        # --- SIGMOID CALIBRATION ---
+        # Sigmoid converts log-odds to probabilities naturally
+        def sigmoid(x):
+            x_clipped = np.clip(x, -20, 20)
+            return 1 / (1 + np.exp(-x_clipped))
+        
+        # Apply sigmoid to raw_scores
+        scores = sigmoid(raw_scores)
+        
+        # Scale to 5%-95% range
+        scores = 0.05 + 0.9 * scores
+        
+        # --- FRESHNESS BOOST (Billet Lookup Specific) ---
+        # Officers who have been in current role longer are "ready to move"
+        # Apply up to 15% boost based on tenure
+        for i in range(len(scores)):
+            days_in_role = feats_list[i].get('days_in_current_rank', 0)
+            # Boost curve: 0-1 year = 0%, 1-2 years = 5%, 2-3 years = 10%, 3+ years = 15%
+            years_in_role = days_in_role / 365.0
+            freshness_boost = min(0.15, max(0, (years_in_role - 1) * 0.05))
+            scores[i] = min(0.95, scores[i] * (1 + freshness_boost))
         
         out = []
         for i, score in enumerate(scores):

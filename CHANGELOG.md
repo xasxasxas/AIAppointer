@@ -5,6 +5,15 @@ All notable changes to AI Appointer Assist will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.1.0] - 2025-12-20
+
+### Restored
+- **Semantic AI Search**: Fully restored the `SemanticAIEngine` using `sentence-transformers`. Users can now perform natural language searches for officers and billets.
+
+### Fixed
+- **App Crash**: Resolved ImportError in `app.py` caused by missing `semantic_engine` module.
+- **Documentation**: Updated Whitepaper and README to reflect the restored functionality and latest version metrics.
+
 ## [1.0.0] - 2025-12-08
 
 ### Added

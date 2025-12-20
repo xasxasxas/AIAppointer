@@ -192,16 +192,47 @@ class Explainer:
         hits.sort(key=lambda x: x['frequency'], reverse=True)
         return hits[:limit]
 
-    def format_feature_explanation(self, feats, score=0.0, constraints=None, contribs=None):
+    def format_feature_explanation(self, feats, score=0.0, constraints=None, contribs=None, mode='employee_lookup'):
         """
         Converts raw feature dict into rich human-readable explanation objects.
         Merges related metrics to save space and provide clearer context.
+        
+        Args:
+            mode: 'employee_lookup' or 'billet_lookup' - changes feature emphasis/labels
         """
         ctx = feats.get('_Context', {})
         t_from = ctx.get('From_Title', 'Unknown')
         t_to = ctx.get('To_Title', 'Unknown')
         p_from = ctx.get('From_Pool', 'Unknown')
         p_to = ctx.get('To_Pool', 'Unknown')
+        
+        # --- CONTEXT-AWARE FEATURE LABELS ---
+        # Different emphasis for Billet Lookup (candidate selection) vs Employee Lookup (role finding)
+        if mode == 'billet_lookup':
+            FEATURE_LABELS = {
+                'rank_match_exact': 'Meets Rank Requirement',
+                'branch_match': 'Branch Qualification',
+                'prior_title_prob': 'Historical Precedent for Role',
+                'years_service': 'Experience Level',
+                'days_in_current_rank': 'Available for Reassignment',
+                'title_similarity': 'Role Relevance',
+                'training_explicit_match': 'Required Training Met',
+                'markov_avg_prob': 'Career Path Alignment'
+            }
+        else:
+            FEATURE_LABELS = {
+                'rank_match_exact': 'Promotion Ready?',
+                'branch_match': 'Branch Fit',
+                'prior_title_prob': 'Career Path Match',
+                'years_service': 'Seniority',
+                'days_in_current_rank': 'Time Since Promotion',
+                'title_similarity': 'Title Similarity',
+                'training_explicit_match': 'Training Match',
+                'markov_avg_prob': 'Sequence Probability'
+            }
+        
+        # Store for use in waterfall chart
+        self._current_feature_labels = FEATURE_LABELS
         
         # Get constraints for expectations
         role_const = constraints.get(t_to, {}) if constraints else {}
@@ -421,12 +452,14 @@ class Explainer:
         Creates a Plotly Waterfall chart from SHAP contributions.
         Supports Base Value display and rich Tooltips.
         """
-        # Dictionary Map for Readable Labels (Static Fallback)
-        FEATURE_MAP = {
+        # Dictionary Map for Readable Labels
+        # Use context-aware labels if set by format_feature_explanation, else fallback
+        FEATURE_MAP = getattr(self, '_current_feature_labels', None) or {
             'rank_diff': 'Rank Proximity',
             'branch_match': 'Branch Match',
             'pool_match': 'Pool Match',
             'years_in_current_rank': 'Time in Rank',
+            'days_in_current_rank': 'Time in Current Role',
             'num_prior_roles': 'Career Depth',
             'history_word_overlap': 'Title Match',
             'title_similarity': 'Title Similarity',

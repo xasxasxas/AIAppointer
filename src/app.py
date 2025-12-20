@@ -14,12 +14,34 @@ from config import DATASET_PATH, UI_PAGE_TITLE, UI_LAYOUT
 
 st.set_page_config(page_title=UI_PAGE_TITLE, layout=UI_LAYOUT)
 
-# Custom CSS for better responsiveness
+# Custom CSS for professional TalentSync AI styling
 st.markdown("""
 <style>
-    /* Table responsiveness */
+    /* === COLOR SCHEME === */
+    :root {
+        --primary-color: #1f77b4;
+        --secondary-color: #ff7f0e;
+        --success-color: #2ca02c;
+        --background-light: #f8f9fa;
+        --text-dark: #1a1a2e;
+    }
+    
+    /* === HEADER STYLING === */
+    h1 {
+        color: var(--text-dark) !important;
+        font-weight: 700 !important;
+    }
+    h2, h3 {
+        color: var(--text-dark) !important;
+        border-bottom: 2px solid #e0e0e0;
+        padding-bottom: 8px;
+    }
+    
+    /* === TABLE RESPONSIVENESS === */
     .stDataFrame {
         width: 100%;
+        border-radius: 8px;
+        overflow: hidden;
     }
     .stDataFrame table {
         width: 100% !important;
@@ -29,76 +51,141 @@ st.markdown("""
         word-wrap: break-word !important;
         max-width: 400px;
         overflow-wrap: break-word !important;
+        padding: 8px 12px !important;
+    }
+    .stDataFrame th {
+        background-color: var(--background-light) !important;
+        font-weight: 600 !important;
     }
     
-    /* Metric styling with auto-sizing */
+    /* === METRIC CARDS === */
     .stMetric {
-        background-color: #f0f2f6;
-        padding: 10px;
-        border-radius: 5px;
-        min-height: 80px;
+        background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+        padding: 16px;
+        border-radius: 10px;
+        border: 1px solid #e0e0e0;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        min-height: 90px;
+    }
+    .stMetric:hover {
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        transform: translateY(-2px);
+        transition: all 0.2s ease;
     }
     .stMetric label {
         font-size: 14px !important;
-        white-space: normal !important;
-        word-wrap: break-word !important;
+        font-weight: 500 !important;
+        color: #666 !important;
     }
     .stMetric [data-testid="stMetricValue"] {
-        font-size: 20px !important;
-        white-space: normal !important;
-        word-wrap: break-word !important;
-        overflow-wrap: break-word !important;
+        font-size: 24px !important;
+        font-weight: 700 !important;
+        color: var(--primary-color) !important;
     }
     
-    /* Text areas */
+    /* === SIDEBAR (Light Theme) === */
+    [data-testid="stSidebar"] {
+        background: linear-gradient(180deg, #f8f9fa 0%, #e9ecef 100%);
+        border-right: 1px solid #dee2e6;
+    }
+    [data-testid="stSidebar"] [data-testid="stMarkdown"] h1 {
+        color: #1f77b4 !important;
+    }
+    [data-testid="stSidebar"] .stRadio label {
+        padding: 8px 12px;
+        border-radius: 6px;
+        margin: 2px 0;
+        color: #333 !important;
+    }
+    [data-testid="stSidebar"] .stRadio label:hover {
+        background-color: rgba(31, 119, 180, 0.1);
+    }
+    
+    /* === EXPANDERS === */
+    .streamlit-expanderHeader {
+        font-weight: 600 !important;
+        font-size: 15px !important;
+        background-color: var(--background-light) !important;
+        border-radius: 8px !important;
+    }
+    
+    /* === BUTTONS === */
+    .stButton > button[kind="primary"] {
+        background: linear-gradient(90deg, #1f77b4 0%, #2196f3 100%);
+        border: none;
+        font-weight: 600;
+        padding: 8px 24px;
+        border-radius: 8px;
+    }
+    .stButton > button[kind="primary"]:hover {
+        background: linear-gradient(90deg, #1565c0 0%, #1976d2 100%);
+        box-shadow: 0 4px 12px rgba(31, 119, 180, 0.3);
+    }
+    
+    /* === INFO/SUCCESS/WARNING BOXES === */
+    .stAlert {
+        border-radius: 8px !important;
+        border-left-width: 4px !important;
+    }
+    
+    /* === TEXT AREAS === */
     .stTextArea textarea {
-        font-size: 12px;
+        font-size: 13px;
+        border-radius: 8px;
+        border: 1px solid #e0e0e0;
     }
     
-    /* Column text wrapping */
+    /* === COLUMN LAYOUT === */
     div[data-testid="column"] {
         overflow: visible !important;
+    }
+    
+    /* === DIVIDERS === */
+    hr {
+        margin: 24px 0 !important;
+        border-color: #e0e0e0 !important;
+    }
+    
+    /* === TABS === */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 8px;
+    }
+    .stTabs [data-baseweb="tab"] {
+        padding: 10px 20px;
+        border-radius: 8px 8px 0 0;
+        font-weight: 500;
     }
 </style>
 """, unsafe_allow_html=True)
 
-from src.predictor import Predictor
 from src.explainer import Explainer
-# Config already imported at top, verified.
-# st.set_page_config already called at top.
 
-# Cache loaders
-@st.cache_resource(ttl=3600)
-
-
-# ... (omitted imports)
-
-
-
+# === Cache Functions ===
 @st.cache_resource
 def load_explainer_v4(df, titles=None):
     return Explainer(df, known_titles=titles)
 
-
-# --- CACHE CLEARING UTILITY ---
-def clear_cache():
-    st.cache_data.clear()
-    st.cache_resource.clear()
-
-@st.cache_resource(ttl=3600)
 @st.cache_resource
 def load_predictor_v7():
     return Predictor()
-
-# ...
 
 @st.cache_data
 def load_data():
     return pd.read_csv(DATASET_PATH)
 
+def clear_cache():
+    """Clear all cached data and resources."""
+    st.cache_data.clear()
+    st.cache_resource.clear()
+
+
+# === Main Application ===
+
+
+
 def main():
-    st.title("AI Appointer Assist")
-    st.markdown("AI-powered system for recommending next-best assignments based on career history.")
+    st.title("🎯 TalentSync AI")
+    st.markdown("*AI-powered talent placement system for optimal career progression and role matching.*")
     
     # Load Resources
     with st.spinner("Loading AI Models..."):
@@ -111,40 +198,38 @@ def main():
         t_titles = list(predictor.valid_roles) if hasattr(predictor, 'valid_roles') else []
         known_titles = list(set(h_titles + t_titles))
     with st.sidebar:
-        st.image("https://upload.wikimedia.org/wikipedia/commons/2/27/FP_Satellite_icon.svg", width=50)
-        st.title("AI Appointer")
-        st.caption(f"v3.0 • {len(df)} Records")
+        st.title("🎯 TalentSync AI")
+        st.caption(f"v4.0 • {len(df):,} Officers • {len(predictor.constraints):,} Billets")
         
         # Welcome message for first-time users
         if 'first_visit' not in st.session_state:
             st.session_state.first_visit = True
         
         if st.session_state.first_visit:
-            with st.expander("Welcome! First time here?", expanded=True):
+            with st.expander("👋 Welcome! First time here?", expanded=True):
                 st.markdown("""
-                **AI Appointer** uses machine learning to predict optimal career progressions.
+                **TalentSync AI** uses machine learning to predict optimal career progressions.
                 
-                **Quick Start:**
-                - **Employee Lookup**: Find best next role for an officer
-                - **Billet Lookup**: Find best candidates for a role
-                - **Analytics**: Explore career patterns and data
-                
-                Click any mode to get started!
+                **Start with Dashboard** to get an overview!
                 """)
                 if st.button("Got it! Don't show again"):
                     st.session_state.first_visit = False
                     st.rerun()
         
+        st.markdown("---")
+        st.markdown("### 📍 Navigation")
+        
         mode = st.radio(
-            "Mode", 
-            ["Employee Lookup", "Simulation", "Billet Lookup", "Analytics & Explorer", "Admin Console"],
-            help="Select a mode to navigate between different features"
+            "Select Mode", 
+            ["🏠 Dashboard", "👤 Employee Lookup", "🎯 Billet Lookup", "🔍 Semantic AI Search", "📊 Analytics & Explorer", "🔄 Simulation", "⚙️ Admin Console"],
+            help="Select a mode to navigate between different features",
+            label_visibility="collapsed"
         )
         
         # Rank Flexibility (Moved to Sidebar)
         rank_flex_up = 0
         rank_flex_down = 0
-        if mode in ["Employee Lookup", "Simulation", "Billet Lookup"]:
+        if mode in ["👤 Employee Lookup", "🔄 Simulation", "🎯 Billet Lookup", "🔍 Semantic AI Search"]:
             st.markdown("---")
             with st.expander("Advanced Settings"):
                 st.caption("Adjust Rank Flexibility for predictions.")
@@ -176,10 +261,151 @@ def main():
     # Dataset Explorer removed (Merged into Analytics & Explorer)
 
     # =========================================================================
+    # MODE 0: DASHBOARD (Home/Landing Page)
+    # =========================================================================
+    if mode == "🏠 Dashboard":
+        st.header("📊 Dashboard")
+        st.markdown("Welcome to **TalentSync AI** — Your intelligent talent placement assistant.")
+        
+        # Key Metrics Row
+        st.markdown("### 📈 System Overview")
+        col1, col2, col3, col4 = st.columns(4)
+        
+        with col1:
+            st.metric("👥 Total Officers", f"{len(df):,}")
+        with col2:
+            st.metric("🎯 Available Billets", f"{len(predictor.constraints):,}")
+        with col3:
+            unique_branches = df['Branch'].nunique()
+            st.metric("🌿 Branches", f"{unique_branches}")
+        with col4:
+            unique_ranks = df['Rank'].nunique()
+            st.metric("🎖️ Rank Levels", f"{unique_ranks}")
+        
+        st.divider()
+        
+        # Data Breakdown
+        st.markdown("### 📋 Data Breakdown")
+        col_a, col_b = st.columns(2)
+        
+        with col_a:
+            st.markdown("**Officers by Branch**")
+            branch_counts = df['Branch'].value_counts()
+            st.bar_chart(branch_counts)
+        
+        with col_b:
+            st.markdown("**Officers by Rank**")
+            rank_counts = df['Rank'].value_counts()
+            st.bar_chart(rank_counts)
+        
+        st.divider()
+        
+        # Navigation Guide
+        st.markdown("### 🧭 How to Use TalentSync AI")
+        st.info("Use the **sidebar navigation** to switch between modes. Here's what each mode does:")
+        
+        guide_col1, guide_col2 = st.columns(2)
+        
+        with guide_col1:
+            with st.expander("👤 **Employee Lookup** — *Most Common*", expanded=True):
+                st.markdown("""
+                **Purpose:** Find the best next role for a specific officer.
+                
+                **When to use:**
+                - Annual posting recommendations
+                - Career progression planning
+                - "What's next for Officer X?"
+                
+                **How:** Select an officer → See AI-recommended roles with explanations.
+                """)
+            
+            with st.expander("🎯 **Billet Lookup** — *Vacancy Filling*"):
+                st.markdown("""
+                **Purpose:** Find the best candidates for an open position.
+                
+                **When to use:**
+                - Filling a vacant billet
+                - Finding qualified officers for a role
+                - "Who should fill Position Y?"
+                
+                **How:** Select a billet → See ranked candidates with AI scores.
+                """)
+            
+            with st.expander("🔍 **Semantic AI Search** — *Advanced*"):
+                st.markdown("""
+                **Purpose:** Natural language search for officers, billets, or similar profiles.
+                
+                **When to use:**
+                - Complex queries: "Masters + HoD experience, NOT staff"
+                - Finding officers with similar careers
+                - Exploring billet requirements
+                
+                **How:** Use INCLUDE/EXCLUDE fields or select reference officer.
+                """)
+        
+        with guide_col2:
+            with st.expander("📊 **Analytics & Explorer** — *Insights*"):
+                st.markdown("""
+                **Purpose:** Explore career patterns and dataset insights.
+                
+                **When to use:**
+                - Understanding career transitions
+                - Analyzing officer demographics
+                - Data exploration
+                
+                **How:** Browse charts and filters to discover patterns.
+                """)
+            
+            with st.expander("🔄 **Simulation** — *What-If*"):
+                st.markdown("""
+                **Purpose:** Test hypothetical scenarios.
+                
+                **When to use:**
+                - "What if we promoted Officer X?"
+                - Exploring alternative career paths
+                - Policy impact analysis
+                
+                **How:** Modify officer attributes → See predicted outcomes.
+                """)
+            
+            with st.expander("⚙️ **Admin Console** — *Administrators Only*"):
+                st.markdown("""
+                **Purpose:** Retrain AI model and manage deployments.
+                
+                **When to use:**
+                - Loading new HR data
+                - Updating the AI model
+                - System maintenance
+                
+                **How:** Upload CSV → Train → Deploy to production.
+                """)
+        
+        st.divider()
+        
+        # Quick Actions
+        st.markdown("### 🚀 Quick Actions")
+        qa_col1, qa_col2, qa_col3 = st.columns(3)
+        
+        with qa_col1:
+            st.markdown("**Find Next Role for Officer**")
+            st.caption("Go to 👤 Employee Lookup")
+        
+        with qa_col2:
+            st.markdown("**Fill an Open Position**")
+            st.caption("Go to 🎯 Billet Lookup")
+        
+        with qa_col3:
+            st.markdown("**Search by Skills**")
+            st.caption("Go to 🔍 Semantic AI Search")
+        
+        st.divider()
+        st.caption("💡 **Tip:** Use the Advanced Settings in the sidebar to adjust rank flexibility for predictions.")
+
+    # =========================================================================
     # MODE 6: ADMIN CONSOLE (RETRAINING HUD)
     # =========================================================================
-    if mode == "Admin Console":
-        st.header("Model Management Console")
+    if mode == "⚙️ Admin Console":
+        st.header("⚙️ Model Management Console")
         st.markdown("Upload new data, retrain the AI, and manage deployments.")
         
         from src.training_manager import TrainingManager
@@ -277,255 +503,204 @@ def main():
     # =========================================================================
     # MODE 1: EMPLOYEE LOOKUP
     # =========================================================================
-    if mode == "Employee Lookup":
-        st.header("Employee Lookup")
-        st.info(" **Find the best next role for an officer** based on their career history, skills, and organizational patterns. The AI analyzes historical career progressions and identifies optimal next steps.")
+    if mode == "👤 Employee Lookup":
+        st.header("👤 Employee Lookup")
+        st.info("🎯 **Find the best next role for an officer** based on their career history, skills, and organizational patterns. The AI analyzes historical career progressions and identifies optimal next steps.")
         
-        # 1. Filters
-        st.markdown("### Filter Officers")
-        st.caption("Narrow down the officer pool using filters and search")
-        col_f1, col_f2, col_f3, col_f4 = st.columns(4)
+        # Compact 2-Column Layout
+        col_left, col_right = st.columns([1, 2])
         
-        all_ranks = sorted(df['Rank'].unique())
-        all_branches = sorted(df['Branch'].unique())
-        all_entries = sorted(df['Entry_type'].unique())
-        
-        with col_f1:
-            sel_rank = st.selectbox("Rank", ["All"] + list(all_ranks), help="Filter officers by their current rank")
-        with col_f2:
-            sel_branch = st.selectbox("Branch", ["All"] + list(all_branches), help="Filter officers by their branch (e.g., Tactical, Engineering)")
-        with col_f3:
-            sel_entry = st.selectbox("Entry Type", ["All"] + list(all_entries), help="Filter by how the officer entered service (e.g., Academy, Direct Commission)")
-        with col_f4:
-            pattern_filter = st.selectbox(
-                "Career Pattern", 
-                ["All", "Has Pattern", "High Confidence (>80%)", "No Pattern"],
-                help="Filter by Markov career progression patterns. 'Has Pattern' shows officers with recognized career sequences from historical data."
-            )
-        
-        # NEW: Search fields
-        col_s1, col_s2 = st.columns(2)
-        with col_s1:
-            employee_id_search = st.text_input(
-                "Search by Employee ID", 
-                placeholder="e.g., 200094",
-                help="Enter full or partial Employee ID to quickly find a specific officer"
-            )
-        with col_s2:
-            name_search = st.text_input(
-                "Search by Name", 
-                placeholder="e.g., Kirk",
-                help="Enter full or partial name (case-insensitive). Supports partial matching."
-            )
+        # === LEFT PANEL: Filters & Officer Selection ===
+        with col_left:
+            st.markdown("#### 🔎 Find Officer")
             
-        # 2. Filter Data
-        filtered_df = df.copy()
-        if sel_rank != "All": filtered_df = filtered_df[filtered_df['Rank'] == sel_rank]
-        if sel_branch != "All": filtered_df = filtered_df[filtered_df['Branch'] == sel_branch]
-        if sel_entry != "All": filtered_df = filtered_df[filtered_df['Entry_type'] == sel_entry]
+            # Quick search
+            employee_id_search = st.text_input("🆔 Employee ID", placeholder="e.g., 200094", key="emp_id_search")
+            name_search = st.text_input("👤 Name", placeholder="e.g., Kirk", key="emp_name_search")
+            
+            # Filters in expander
+            with st.expander("🎚️ Filters", expanded=False):
+                all_ranks = sorted(df['Rank'].unique())
+                all_branches = sorted(df['Branch'].unique())
+                all_entries = sorted(df['Entry_type'].unique())
+                
+                sel_rank = st.selectbox("Rank", ["All"] + list(all_ranks), key="emp_rank")
+                sel_branch = st.selectbox("Branch", ["All"] + list(all_branches), key="emp_branch")
+                sel_entry = st.selectbox("Entry", ["All"] + list(all_entries), key="emp_entry")
+                pattern_filter = st.selectbox("Pattern", ["All", "Has Pattern", "High Confidence (>80%)", "No Pattern"], key="emp_pattern")
+            
+            # Apply filters
+            filtered_df = df.copy()
+            if sel_rank != "All": filtered_df = filtered_df[filtered_df['Rank'] == sel_rank]
+            if sel_branch != "All": filtered_df = filtered_df[filtered_df['Branch'] == sel_branch]
+            if sel_entry != "All": filtered_df = filtered_df[filtered_df['Entry_type'] == sel_entry]
+            if employee_id_search:
+                filtered_df = filtered_df[filtered_df['Employee_ID'].astype(str).str.contains(employee_id_search, case=False, na=False)]
+            if name_search:
+                filtered_df = filtered_df[filtered_df['Name'].str.contains(name_search, case=False, na=False)]
+            
+            count = len(filtered_df)
+            
+            # Officer list with navigation
+            st.markdown("---")
+            st.caption(f"📋 {count} officers found")
+            
+            if count > 0:
+                if 'curr_idx' not in st.session_state: st.session_state.curr_idx = 0
+                if st.session_state.curr_idx >= count: st.session_state.curr_idx = 0
+                
+                # Navigation
+                nav_cols = st.columns([1, 2, 1])
+                with nav_cols[0]:
+                    if st.button("◀ Prev", key="prev_emp"):
+                        st.session_state.curr_idx = (st.session_state.curr_idx - 1) % count
+                with nav_cols[1]:
+                    st.markdown(f"<p style='text-align:center; font-weight:bold;'>{st.session_state.curr_idx + 1} / {count}</p>", unsafe_allow_html=True)
+                with nav_cols[2]:
+                    if st.button("Next ▶", key="next_emp"):
+                        st.session_state.curr_idx = (st.session_state.curr_idx + 1) % count
+                
+                row = filtered_df.iloc[st.session_state.curr_idx]
         
-        # NEW: Apply search filters
-        if employee_id_search:
-            filtered_df = filtered_df[filtered_df['Employee_ID'].astype(str).str.contains(employee_id_search, case=False, na=False)]
-        if name_search:
-            filtered_df = filtered_df[filtered_df['Name'].str.contains(name_search, case=False, na=False)]
-        
-        count = len(filtered_df)
-        st.success(f"Found {count} officers matching criteria.")
-        
-        if count > 0:
-            # 3. Iteration Controls
-            if 'curr_idx' not in st.session_state: st.session_state.curr_idx = 0
-            
-            # Reset index if filters change (naive check: if index out of bounds)
-            if st.session_state.curr_idx >= count: st.session_state.curr_idx = 0
-            
-            col_prev, col_stat, col_next = st.columns([1, 2, 1])
-            with col_prev:
-                if st.button("Previous"):
-                    st.session_state.curr_idx = (st.session_state.curr_idx - 1) % count
-            with col_next:
-                if st.button("Next"):
-                    st.session_state.curr_idx = (st.session_state.curr_idx + 1) % count
-            with col_stat:
-                st.markdown(f"<div style='text-align: center; font-weight: bold; padding-top: 10px;'>Officer {st.session_state.curr_idx + 1} of {count}</div>", unsafe_allow_html=True)
+        # === RIGHT PANEL: Officer Info + Predictions ===
+        with col_right:
+            if count > 0:
+                # OFFICER INFO AT TOP
+                st.markdown(f"### 👤 {row['Rank']} {row['Name']}")
                 
-            # 4. Display Current Officer with NAME
-            row = filtered_df.iloc[st.session_state.curr_idx]
-            
-            # Display officer header with name
-            st.markdown(f"### Officer: {row['Employee_ID']} - {row['Rank']} {row['Name']} ({row['Branch']})")
-            
-            st.divider()
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                st.metric("Rank", row['Rank'])
-                st.metric("Branch", row['Branch'])
-            with col2:
-                st.metric("Current Role", row['current_appointment'])
-                st.metric("Pool", row['Pool'])
-            with col3:
-                st.metric("ID", row['Employee_ID'])
-                st.text(f"Entry: {row['Entry_type']}")
+                info_cols = st.columns(4)
+                with info_cols[0]:
+                    st.metric("🆔 ID", row['Employee_ID'])
+                with info_cols[1]:
+                    st.metric("🌿 Branch", row['Branch'])
+                with info_cols[2]:
+                    st.metric("🌊 Pool", row['Pool'])
+                with info_cols[3]:
+                    st.metric("📅 Entry", row['Entry_type'])
                 
-            # History
-            with st.expander("Career History", expanded=False):
-                st.text_area("History", row['Appointment_history'], height=100, disabled=True)
-
-            # 5. AUTO-PREDICT
-            st.markdown("### Predicted Trajectory")
-            try:
-                # Convert Series to DF for predictor
-                input_df = pd.DataFrame([row])
-                results = predictor.predict(input_df, rank_flex_up=rank_flex_up, rank_flex_down=rank_flex_down)
+                st.caption(f"📍 **Current Role:** {row['current_appointment']}")
                 
-                # Check top confidence
-                top_conf = results.iloc[0]['Confidence']
+                with st.expander("📜 Career History", expanded=False):
+                    st.text(str(row['Appointment_history']))
                 
-                # Dynamic Alert
-                if top_conf > 0.4:
-                    st.success(f"Strong Recommendation: **{results.iloc[0]['Prediction']}**")
-                else:
-                    st.warning(f"Weak Signal ({top_conf:.1%}). Model suggests: **{results.iloc[0]['Prediction']}**")
-
-                st.subheader(f"Top 10 Recommendations")
+                st.divider()
                 
-                # NEW: Import helper for pattern info
-                from src.xai_helpers import get_markov_pattern_info
+                # PREDICTIONS
+                st.markdown("#### 🎯 Recommended Next Roles")
                 
-                # Store pattern info for filtering
-                results_with_patterns = []
-                for idx, r_row in results.head(10).iterrows():
-                    score = r_row['Confidence']
-                    role_name = r_row['role'] if 'role' in r_row else r_row['Prediction']
+                try:
+                    input_df = pd.DataFrame([row])
+                    results = predictor.predict(input_df, rank_flex_up=rank_flex_up, rank_flex_down=rank_flex_down)
+                    top_conf = results.iloc[0]['Confidence']
                     
-                    # Get Markov pattern info
-                    pattern_info = get_markov_pattern_info(predictor, row, role_name)
+                    # Top recommendation highlight
+                    if top_conf > 0.4:
+                        st.success(f"✅ **Top Recommendation:** {results.iloc[0]['Prediction']} ({top_conf:.0%})")
+                    else:
+                        st.warning(f"⚠️ **Top Recommendation:** {results.iloc[0]['Prediction']} ({top_conf:.0%})")
                     
-                    results_with_patterns.append({
-                        'idx': idx,
-                        'row': r_row,
-                        'score': score,
-                        'role_name': role_name,
-                        'pattern_info': pattern_info
-                    })
-                
-                # Apply pattern filter
-                if pattern_filter == "Has Pattern":
-                    results_with_patterns = [r for r in results_with_patterns if r['pattern_info'] and r['pattern_info']['context_seen']]
-                elif pattern_filter == "High Confidence (>80%)":
-                    results_with_patterns = [r for r in results_with_patterns if r['pattern_info'] and r['pattern_info']['context_seen'] and r['pattern_info']['target_probability'] > 0.8]
-                elif pattern_filter == "No Pattern":
-                    results_with_patterns = [r for r in results_with_patterns if not r['pattern_info'] or not r['pattern_info']['context_seen']]
-                
-                if not results_with_patterns:
-                    st.info(f"No results match the '{pattern_filter}' filter. Try changing the filter.")
-                
-                # Interactive List with Explainability
-                for result_data in results_with_patterns:
-                    r_row = result_data['row']
-                    score = result_data['score']
-                    role_name = result_data['role_name']
-                    pattern_info = result_data['pattern_info']
+                    from src.xai_helpers import get_markov_pattern_info
                     
-                    # Score color
-                    score_color = "[HIGH]" if score > 0.5 else "[MED]" if score > 0.1 else "[LOW]"
+                    # Build results with patterns
+                    results_with_patterns = []
+                    for idx, r_row in results.head(10).iterrows():
+                        score = r_row['Confidence']
+                        role_name = r_row['role'] if 'role' in r_row else r_row['Prediction']
+                        pattern_info = get_markov_pattern_info(predictor, row, role_name)
+                        results_with_patterns.append({
+                            'idx': idx, 'row': r_row, 'score': score,
+                            'role_name': role_name, 'pattern_info': pattern_info
+                        })
                     
-                    # Pattern badge
-                    pattern_badge = ""
-                    if pattern_info and pattern_info['context_seen']:
-                        prob = pattern_info['target_probability']
-                        order = pattern_info['order_used']
-                        if prob > 0.8:
-                            pattern_badge = f"[PATTERN] {order}-step ({prob*100:.0f}%)"
-                        elif prob > 0.4:
-                            pattern_badge = f"[PATTERN] {order}-step ({prob*100:.0f}%)"
-                        else:
-                            pattern_badge = f"[PATTERN] {order}-step ({prob*100:.0f}%)"
+                    # Apply pattern filter
+                    if pattern_filter == "Has Pattern":
+                        results_with_patterns = [r for r in results_with_patterns if r['pattern_info'] and r['pattern_info']['context_seen']]
+                    elif pattern_filter == "High Confidence (>80%)":
+                        results_with_patterns = [r for r in results_with_patterns if r['pattern_info'] and r['pattern_info']['context_seen'] and r['pattern_info']['target_probability'] > 0.8]
+                    elif pattern_filter == "No Pattern":
+                        results_with_patterns = [r for r in results_with_patterns if not r['pattern_info'] or not r['pattern_info']['context_seen']]
                     
-                    # Build header with pattern indicator
-                    header = f"{score_color} {score:.1%} | {pattern_badge + ' | ' if pattern_badge else ''}{role_name}"
+                    if not results_with_patterns:
+                        st.info(f"No results match '{pattern_filter}' filter.")
                     
-                    with st.expander(header):
-                         # 1. Breakdown Chart
-                        st.markdown("#### Why this recommendation?")
-                        feats = r_row.get('_Feats', {})
-                        if feats:
-                            
-                            # Extract XAI Contribs
+                    # Results list with full details
+                    for result_data in results_with_patterns:
+                        r_row = result_data['row']
+                        score = result_data['score']
+                        role_name = result_data['role_name']
+                        pattern_info = result_data['pattern_info']
+                        
+                        # Pattern badge
+                        pattern_badge = ""
+                        if pattern_info and pattern_info['context_seen']:
+                            prob = pattern_info['target_probability']
+                            order = pattern_info['order_used']
+                            pattern_badge = f" 🔗 {order}-step ({prob*100:.0f}%)"
+                        
+                        # Score indicator
+                        score_icon = "🟢" if score > 0.5 else "🟡" if score > 0.1 else "🔴"
+                        
+                        with st.expander(f"{score_icon} {score:.0%} | {role_name}{pattern_badge}"):
+                            feats = r_row.get('_Feats', {})
                             contribs = r_row.get('_Contribs', None)
                             
-                            metrics = explainer.format_feature_explanation(feats, score=top_conf, constraints=predictor.constraints, contribs=contribs)
-                            # Create comparison chart
-                            c1, c2, c3, c4, c5 = st.columns(5)
+                            if feats:
+                                metrics = explainer.format_feature_explanation(feats, score=top_conf, constraints=predictor.constraints, contribs=contribs)
+                                
+                                # Metrics with TOOLTIPS restored
+                                st.markdown("**Why this recommendation?**")
+                                m_cols = st.columns(5)
+                                
+                                m_ai = metrics.get('AI Score', {'value': '-', 'desc': 'No Data'})
+                                m_cols[0].metric("AI Score", m_ai['value'], help=m_ai.get('desc', ''))
+                                
+                                m_hist = metrics.get('History Strength', {'value': '-', 'desc': 'No Data'})
+                                m_cols[1].metric("History", m_hist['value'], help=m_hist.get('desc', ''))
+                                
+                                m_train = metrics.get('Training Match', {'value': '-', 'desc': 'No Data'})
+                                m_cols[2].metric("Training", m_train['value'], help=m_train.get('desc', ''))
+                                
+                                m_bp = metrics.get('Branch & Pool Fit', {'value': '-', 'desc': 'No Data'})
+                                m_cols[3].metric("Branch & Pool", m_bp['value'], help=m_bp.get('desc', ''))
+                                
+                                m_re = metrics.get('Rank & Entry Fit', {'value': '-', 'desc': 'No Data'})
+                                m_cols[4].metric("Rank & Entry", m_re['value'], help=m_re.get('desc', ''))
+                                
+                                # XAI Section
+                                if contribs:
+                                    display_xai_section(
+                                        predictor=predictor, explainer=explainer,
+                                        officer_data=row, target_role=role_name,
+                                        score=score, contribs=contribs,
+                                        base_value=r_row.get('_BaseVal', 0.0),
+                                        feats=feats, mode="employee"
+                                    )
                             
-                            m_ai = metrics.get('AI Score', {'value': '0%', 'desc': 'No Data'})
-                            c1.metric("AI Score", m_ai['value'], help=m_ai['desc'])
-                            
-                            m_hist = metrics.get('History Strength', {'value': '0%', 'desc': 'No Data'})
-                            c2.metric("History Match", m_hist['value'], help=m_hist['desc'])
-                            
-                            m_train = metrics.get('Training Match', {'value': '-', 'desc': 'No Data'})
-                            c3.metric("Training", m_train['value'], help=m_train['desc'])
-                            
-                            m_bp = metrics.get('Branch & Pool Fit', {'value': '-', 'desc': 'No Data'})
-                            c4.metric("Branch & Pool", m_bp['value'], help=m_bp['desc'])
-                            
-                            m_re = metrics.get('Rank & Entry Fit', {'value': '-', 'desc': 'No Data'})
-                            c5.metric("Rank & Entry", m_re['value'], help=m_re['desc'])
-                            
-                            # Deep Dive XAI - NEW IMPLEMENTATION
-                            if contribs:
-                                display_xai_section(
-                                    predictor=predictor,
-                                    explainer=explainer,
-                                    officer_data=row,
-                                    target_role=role_name,
-                                    score=score,
-                                    contribs=contribs,
-                                    base_value=r_row.get('_BaseVal', 0.0),
-                                    feats=feats,
-                                    mode="employee"
-                                )
-
-                        # 2. Historical Precedents
-                        st.markdown("#### Historical Precedents")
-                        
-                        # Use exact title from Predictor context (matches Tooltip)
-                        ctx = feats.get('_Context', {})
-                        context_title = ctx.get('From_Title')
-                        
-                        # Fallback to row if context missing
-                        curr_title = context_title if context_title else row.get('current_appointment', row.get('last_role_title'))
-                        
-                        if curr_title:
-                            precedents = explainer.get_precedents(curr_title, role_name)
-                            if precedents:
-                                st.write(f"Officers who moved from **{curr_title}** to **{role_name}**:")
-                                cols = ['Employee_ID', 'Rank', 'Name', 'Branch', 'Pool', 'Entry_type', 'Appointment_history', 'Training_history']
-                                st.dataframe(pd.DataFrame(precedents)[cols], hide_index=True)
-                            else:
-                                st.caption("No exact historical precedents found for this specific transition.")
+                            # FULL Precedent Table restored
+                            st.markdown("#### 📊 Historical Precedents")
+                            ctx = feats.get('_Context', {}) if feats else {}
+                            curr_title = ctx.get('From_Title') or row.get('current_appointment')
+                            if curr_title:
+                                precedents = explainer.get_precedents(curr_title, role_name)
+                                if precedents:
+                                    st.write(f"Officers who moved from **{curr_title}** to **{role_name}**:")
+                                    prec_cols = ['Employee_ID', 'Rank', 'Name', 'Branch', 'Pool', 'Entry_type']
+                                    st.dataframe(pd.DataFrame(precedents)[prec_cols], hide_index=True, use_container_width=True)
+                                else:
+                                    st.caption("No exact historical precedents found for this transition.")
                 
-            except Exception as e:
-                st.error(f"Prediction unavailable: {e}")
-                
-        else:
-            st.warning("No officers match. Adjust filters.")
+                except Exception as e:
+                    st.error(f"Prediction error: {e}")
+            else:
+                st.warning("No officers match. Adjust filters.")
 
-    # =========================================================================
-    # MODE 4: BRANCH ANALYTICS (DASHBOARD)
-    # =========================================================================
-    # =========================================================================
-    # MODE 4: ANALYTICS COMMAND CENTER
-    # =========================================================================
     # =========================================================================
     # MODE 4: ANALYTICS & EXPLORER
     # =========================================================================
-    elif mode == "Analytics & Explorer":
-        st.header("Analytics & Data Explorer")
-        st.info(" **Explore organizational data, career flows, and appointment patterns**. Analyze career progression trends, organizational structure, and historical appointment timelines.")
-        st.caption("Strategic insights, organizational structure, and detailed dataset exploration.")
+    elif mode == "📊 Analytics & Explorer":
+        st.header("📊 Analytics & Data Explorer")
+        st.info("📈 **Explore organizational data, career flows, and appointment patterns**. Analyze career progression trends, organizational structure, and historical appointment timelines.")
+        st.caption("✨ Strategic insights, organizational structure, and detailed dataset exploration.")
         
         import plotly.graph_objects as go
         import plotly.express as px
@@ -542,7 +717,7 @@ def main():
             "Appointments Map",
             "Void Analysis",
             "Org Structure",
-            "Appointment Timeline"
+            "Timeline Explorer"
         ])
         
         # =====================================================================
@@ -670,10 +845,13 @@ def main():
             with st.expander(" Filter Population", expanded=True):
                 c1, c2, c3, c4 = st.columns(4)
                 all_branches = sorted(df['Branch'].unique())
-                sel_branches = c1.multiselect("Branch", all_branches, default=[all_branches[0]] if all_branches else [])
-                sel_pools = c2.multiselect("Pool", sorted(df['Pool'].unique()))
-                sel_ranks = c3.multiselect("Current Rank", sorted(df['Rank'].unique()))
-                sel_entries = c4.multiselect("Entry Type", sorted(df['Entry_type'].unique()))
+                sel_branches = c1.multiselect("Branch", all_branches, default=all_branches)  # Auto-select all
+                all_pools = sorted(df['Pool'].unique())
+                sel_pools = c2.multiselect("Pool", all_pools, default=all_pools)  # Auto-select all
+                all_ranks = sorted(df['Rank'].unique())
+                sel_ranks = c3.multiselect("Current Rank", all_ranks, default=all_ranks)  # Auto-select all
+                all_entries = sorted(df['Entry_type'].unique())
+                sel_entries = c4.multiselect("Entry Type", all_entries, default=all_entries)  # Auto-select all
             
             # Filter Data
             filtered_df = df.copy()
@@ -1150,7 +1328,7 @@ def main():
         # TAB 7: APPOINTMENT TIMELINE (GANTT CHART)
         # =====================================================================
         with t_gantt:
-            st.markdown("### Temporal Appointment Timeline")
+            st.markdown("### Timeline Explorer")
             st.caption("Complete HR temporal view: appointments, training, and promotions")
             
             # View selector
@@ -1177,7 +1355,7 @@ def main():
             
             # Legend
             if view_mode == "By Officer":
-                st.info("**Legend:** Blue bars = Appointments | Green diamonds = Training | Gold stars = Promotions")
+                st.info("**Legend:** Blue bars = Appointments | Green bars = Training courses | Gold stars (⭐) = Promotions")
             else:
                 st.info("**Legend:** Each row shows a position/billet. Bars show when different officers held that position.")
             
@@ -1197,22 +1375,33 @@ def main():
                         end_date=end_dt
                     )
                 
-                st.plotly_chart(fig_gantt, use_container_width=True)
+                # Display chart based on type
+                if view_mode == "By Officer":
+                    chart, height = fig_gantt
+                    # Altair handles height via properties, but we can set container height if needed?
+                    # Streamlit handles altair chart sizing well.
+                    # We can use the calculated height to set chart size if not set in properties.
+                    # In gantt_viz, we set width='container', but not height explicitly in properties.
+                    # Let's trust Altair interactive zooming.
+                    st.altair_chart(chart, use_container_width=True, theme="streamlit")
+                else:
+                    st.plotly_chart(fig_gantt, use_container_width=True)
                 
                 # Usage instructions
                 with st.expander("How to use this chart"):
                     st.markdown("""
                     **Interactions:**
-                    - **Hover** over bars to see details
-                    - **Zoom** by dragging on the timeline
-                    - **Pan** by holding shift and dragging
-                    - **Reset** by double-clicking
+                    - **Scroll** (Mouse Wheel) to Zoom in/out
+                    - **Drag** to Pan the timeline
+                    - **Hover** for details
+                    """)
                     
+                    st.markdown("""
                     **By Officer View:**
                     - Each row = one officer's complete career
                     - Blue bars = appointment periods
-                    - Green diamonds = training courses
-                    - Gold stars = promotions
+                    - Green bars = training courses (with duration)
+                    - Gold stars (⭐) = promotions
                     
                     **By Billet View:**
                     - Each row = one position/billet
@@ -1281,9 +1470,9 @@ def main():
                 hide_index=True
             )
             
-    elif mode == "Simulation":
-        st.header("Experiments Lab")
-        st.markdown("Design hypothetical officers, tweak parameters, and analyze how the AI reacts to specific career profiles.")
+    elif mode == "🔄 Simulation":
+        st.header("🔄 Experiments Lab")
+        st.markdown("🧪 Design hypothetical officers, tweak parameters, and analyze how the AI reacts to specific career profiles.")
         
         # Layout: Control Panel (Left), Results (Right)
         col_inputs, col_results = st.columns([1, 1.2])
@@ -1518,10 +1707,10 @@ def main():
             else:
                 st.info(" Configure your officer profile on the left and click 'Run Prediction Analysis' to see results.")
             
-    elif mode == "Billet Lookup":
-        st.header("Billet Lookup")
-        st.info(" **Find the best candidates for a specific role**. The AI ranks officers by fit, considering career patterns, skills, branch/rank requirements, and historical precedents. Perfect for filling critical positions.")
-        st.markdown("Reverse search: Select a target role to find the best fit officers.")
+    elif mode == "🎯 Billet Lookup":
+        st.header("🎯 Billet Lookup")
+        st.info("👥 **Find the best candidates for a specific role**. The AI ranks officers by fit, considering career patterns, skills, branch/rank requirements, and historical precedents. Perfect for filling critical positions.")
+        st.markdown("🔀 Reverse search: Select a target role to find the best fit officers.")
         
         # 1. Filters for Target Role List
         with st.expander(" Filter Target Role List", expanded=True):
@@ -1618,7 +1807,7 @@ def main():
                         for idx, row in match_df.iterrows():
                             # Header with Score
                             score = row['Confidence']
-                            score_color = "[HIGH]" if score > 0.5 else "[MED]" if score > 0.1 else "[LOW]"
+                            score_color = "🟢 [HIGH]" if score > 0.5 else "🟡 [MED]" if score > 0.1 else "🔴 [LOW]"
                             
                             with st.expander(f"{score_color} {score:.1%} | {row['Employee_ID']} - {row['Rank']} {row['Name']} ({row['Branch']}) - Currently {row.get('CurrentRole', 'Unknown')}"):
                                 # 1. Breakdown Chart
@@ -1629,7 +1818,7 @@ def main():
                                     # Extract XAI Contribs
                                     contribs = row.get('_Contribs', None)
                                     
-                                    metrics = explainer.format_feature_explanation(feats, score=score, constraints=predictor.constraints, contribs=contribs)
+                                    metrics = explainer.format_feature_explanation(feats, score=score, constraints=predictor.constraints, contribs=contribs, mode='billet_lookup')
                                     # Create comparison chart
                                     c1, c2, c3, c4, c5 = st.columns(5)
                                     
@@ -1671,11 +1860,597 @@ def main():
                                 if rel_exp:
                                     for r in rel_exp:
                                         st.info(f"**{r['role']}**: {r['desc']}")
-                                else:
-                                    st.caption("No specific feeder roles found in candidate history matching previous incumbents.")
-                    else:
-                        st.warning("No candidates met the confidence threshold for this specific role. Try adjusting filters or the 'Min Incumbents' setting.")
+                    st.warning("No candidates met the confidence threshold for this specific role. Try adjusting filters or the 'Min Incumbents' setting.")
 
+    # =========================================================================
+    # MODE: SEMANTIC AI SEARCH
+    # =========================================================================
+    elif mode == "🔍 Semantic AI Search":
+        st.header("🧠 Semantic AI Search")
+        
+        st.info("""
+        **True AI-Powered Search**: Ask questions in natural language and the AI understands your intent.
+        
+        Supports: Complex queries, negation (NOT, except), temporal (recently, longest), comparisons (more than), and more!
+        """)
+        
+        # Initialize Semantic AI Engine with progress
+        @st.cache_resource
+        def get_semantic_engine(_df, _predictor):
+            try:
+                from semantic_engine import SemanticAIEngine
+                return SemanticAIEngine(_df, _predictor)
+            except Exception as e:
+                return None
+        
+        # Show loading progress for first-time initialization
+        if 'semantic_engine_loaded' not in st.session_state:
+            with st.status("🔄 Initializing Semantic AI Engine...", expanded=True) as status:
+                st.write("📚 Loading query parser...")
+                semantic_engine = get_semantic_engine(df, predictor)
+                st.write("🔍 Building search indices...")
+                st.write("✅ Ready!")
+                status.update(label="✅ Semantic AI Engine Ready!", state="complete", expanded=False)
+            st.session_state['semantic_engine_loaded'] = True
+            st.session_state['semantic_engine'] = semantic_engine
+        else:
+            semantic_engine = st.session_state.get('semantic_engine') or get_semantic_engine(df, predictor)
+        
+        if not semantic_engine:
+            st.error("Semantic engine not available. Please install sentence-transformers.")
+            st.stop()
+        
+        # Three tabs for different use cases
+        tab1, tab2, tab3 = st.tabs(["🎯 Career Match", "🔍 Billet Search", "👥 Similar Officer"])
+        
+        # =====================================================
+        # TAB 1: SEMANTIC CAREER MATCH
+        # =====================================================
+        with tab1:
+            st.markdown("### Find Officers by Experience & Skills")
+            st.caption("Use the INCLUDE field for required skills/experience and EXCLUDE for things to avoid")
+            
+            # Separate Include/Exclude fields
+            col_inc, col_exc = st.columns(2)
+            
+            with col_inc:
+                include_terms = st.text_area(
+                    "✅ INCLUDE (required)",
+                    placeholder="e.g., masters, head of department, instructor, phd, tactical...",
+                    height=80,
+                    key="career_include",
+                    help="Comma-separated terms. Officers MUST have these in their history."
+                )
+            
+            with col_exc:
+                exclude_terms = st.text_area(
+                    "❌ EXCLUDE (avoid)",
+                    placeholder="e.g., staff, engineering, cadet...",
+                    height=80,
+                    key="career_exclude",
+                    help="Comma-separated terms. Officers with these will be filtered OUT."
+                )
+            
+            # Additional filters
+            st.markdown("#### 🎚️ Optional Filters")
+            col_f1, col_f2, col_f3 = st.columns(3)
+            
+            with col_f1:
+                all_ranks = ["Any"] + sorted(df['Rank'].unique())
+                filter_rank_career = st.selectbox("Rank", all_ranks, key="career_rank")
+            
+            with col_f2:
+                all_branches = ["Any"] + sorted(df['Branch'].unique())
+                filter_branch_career = st.selectbox("Branch", all_branches, key="career_branch")
+            
+            with col_f3:
+                all_pools = ["Any"] + sorted(df['Pool'].unique())
+                filter_pool_career = st.selectbox("Pool", all_pools, key="career_pool")
+            
+            if st.button("🔍 Search Officers", type="primary", key="search_officers"):
+                if include_terms.strip() or filter_rank_career != "Any" or filter_branch_career != "Any":
+                    progress_bar = st.progress(0, text="Starting search...")
+                    
+                    # Parse include/exclude terms
+                    include_list = [t.strip().lower() for t in include_terms.split(',') if t.strip()]
+                    exclude_list = [t.strip().lower() for t in exclude_terms.split(',') if t.strip()]
+                    
+                    progress_bar.progress(0.2, text="🔍 Filtering officers...")
+                    
+                    matched_officers = []
+                    
+                    for idx, row in df.iterrows():
+                        score = 0
+                        reasons = []
+                        
+                        # Build searchable text
+                        appt_hist = str(row.get('Appointment_history', '')).lower()
+                        train_hist = str(row.get('Training_history', '')).lower()
+                        curr_role = str(row.get('current_appointment', '')).lower()
+                        combined_text = f"{appt_hist} {train_hist} {curr_role}"
+                        
+                        # Apply rank filter
+                        if filter_rank_career != "Any":
+                            if row['Rank'] != filter_rank_career:
+                                continue
+                            reasons.append(f"✓ Rank: {filter_rank_career}")
+                            score += 2
+                        
+                        # Apply branch filter
+                        if filter_branch_career != "Any":
+                            if row['Branch'] != filter_branch_career:
+                                continue
+                            reasons.append(f"✓ Branch: {filter_branch_career}")
+                            score += 2
+                        
+                        # Apply pool filter
+                        if filter_pool_career != "Any":
+                            if row['Pool'] != filter_pool_career:
+                                continue
+                            reasons.append(f"✓ Pool: {filter_pool_career}")
+                            score += 1
+                        
+                        # Check EXCLUDE terms (must NOT match)
+                        excluded = False
+                        for excl in exclude_list:
+                            if excl in combined_text:
+                                excluded = True
+                                break
+                        if excluded:
+                            continue  # Skip this officer
+                        
+                        # Check INCLUDE terms (must match)
+                        include_matches = 0
+                        for incl in include_list:
+                            if incl in combined_text:
+                                include_matches += 1
+                                score += 3
+                                if incl in train_hist:
+                                    reasons.append(f"🎓 Training: '{incl}'")
+                                elif incl in appt_hist:
+                                    reasons.append(f"📋 Experience: '{incl}'")
+                                else:
+                                    reasons.append(f"✓ Contains: '{incl}'")
+                        
+                        # Require at least some includes to match (if provided)
+                        if include_list and include_matches == 0:
+                            continue
+                        
+                        # Add to results if score > 0
+                        if score > 0 or (not include_list and not exclude_list):
+                            matched_officers.append({
+                                'row': row,
+                                'score': score,
+                                'reasons': reasons
+                            })
+                    
+                    progress_bar.progress(0.7, text="📊 Ranking results...")
+                    
+                    # Sort by score
+                    matched_officers.sort(key=lambda x: x['score'], reverse=True)
+                    
+                    # Convert to MatchResult format for consistency
+                    from dataclasses import dataclass
+                    results = []
+                    for m in matched_officers[:50]:
+                        results.append(type('MatchResult', (), {
+                            'entity_data': m['row'].to_dict(),
+                            'final_score': m['score'] / 10.0,  # Normalize
+                            'lgbm_score': None,
+                            'match_reasons': m['reasons']
+                        })())
+                    
+                    st.session_state['career_results'] = results
+                    st.session_state['career_xai'] = {
+                        'include': include_list,
+                        'exclude': exclude_list,
+                        'filters': {
+                            'rank': filter_rank_career,
+                            'branch': filter_branch_career,
+                            'pool': filter_pool_career
+                        }
+                    }
+                    
+                    progress_bar.progress(1.0, text="✅ Complete!")
+                    progress_bar.empty()
+                else:
+                    st.warning("Please enter at least one search term or filter")
+            
+            # Display Results
+            if st.session_state.get('career_results'):
+                results = st.session_state['career_results']
+                xai = st.session_state.get('career_xai')
+                
+                # XAI Breakdown
+                with st.expander("🧠 Search Criteria", expanded=True):
+                    if xai and isinstance(xai, dict):
+                        # New format with include/exclude
+                        if xai.get('include'):
+                            st.write(f"**✅ Include terms:** {', '.join(xai['include'])}")
+                        if xai.get('exclude'):
+                            st.write(f"**❌ Exclude terms:** {', '.join(xai['exclude'])}")
+                        
+                        filters = xai.get('filters', {})
+                        filter_strs = []
+                        if filters.get('rank') != 'Any':
+                            filter_strs.append(f"Rank = {filters['rank']}")
+                        if filters.get('branch') != 'Any':
+                            filter_strs.append(f"Branch = {filters['branch']}")
+                        if filters.get('pool') != 'Any':
+                            filter_strs.append(f"Pool = {filters['pool']}")
+                        if filter_strs:
+                            st.write(f"**🎚️ Filters:** {', '.join(filter_strs)}")
+                        
+                        st.write(f"**📊 Found:** {len(results)} matching officers")
+                
+                # Results
+                st.markdown(f"### Results ({len(results)} officers found)")
+                
+                for i, result in enumerate(results[:15]):
+                    data = result.entity_data
+                    score_pct = f"{result.final_score:.0%}"
+                    lgbm_badge = f" | LightGBM: {result.lgbm_score:.0%}" if result.lgbm_score else ""
+                    
+                    with st.expander(f"#{i+1} | {score_pct} Match | {data.get('Employee_ID')} - {data.get('Rank')} {data.get('Name')}{lgbm_badge}"):
+                        # Basic Info
+                        col1, col2, col3 = st.columns(3)
+                        with col1:
+                            st.write(f"**🏷️ Rank:** {data.get('Rank')}")
+                            st.write(f"**🌿 Branch:** {data.get('Branch')}")
+                        with col2:
+                            st.write(f"**🌊 Pool:** {data.get('Pool')}")
+                            st.write(f"**📅 Entry:** {data.get('Entry_type')}")
+                        with col3:
+                            st.write(f"**📊 Eval Avg:** {data.get('8_yr_avg_eval', 'N/A')}")
+                            st.write(f"**🎖️ Current:** {data.get('current_appointment', 'N/A')[:40]}...")
+                        
+                        st.divider()
+                        
+                        # Match Reasons (XAI)
+                        if result.match_reasons:
+                            st.markdown("**🎯 Why Matched:**")
+                            for reason in result.match_reasons[:5]:
+                                st.write(f"  {reason}")
+                            st.divider()
+                        
+                        # Detailed History
+                        col_appt, col_train = st.columns(2)
+                        
+                        officer_id = data.get('Employee_ID', i)
+                        
+                        with col_appt:
+                            st.markdown("**📋 Appointment History:**")
+                            appt_hist = data.get('Appointment_history', 'N/A')
+                            if appt_hist and appt_hist != 'N/A':
+                                # Format nicely
+                                appt_display = str(appt_hist)[:500]
+                                if len(str(appt_hist)) > 500:
+                                    appt_display += "..."
+                                st.text_area("", appt_display, height=120, disabled=True, key=f"career_appt_{officer_id}", label_visibility="collapsed")
+                            else:
+                                st.caption("No appointment history available")
+                        
+                        with col_train:
+                            st.markdown("**🎓 Training History:**")
+                            train_hist = data.get('Training_history', 'N/A')
+                            if train_hist and train_hist != 'N/A':
+                                train_display = str(train_hist)[:500]
+                                if len(str(train_hist)) > 500:
+                                    train_display += "..."
+                                st.text_area("", train_display, height=120, disabled=True, key=f"career_train_{officer_id}", label_visibility="collapsed")
+                            else:
+                                st.caption("No training history available")
+                        
+                        # Promotion History
+                        promo_hist = data.get('Promotion_history', '')
+                        if promo_hist:
+                            st.markdown("**🚀 Promotion History:**")
+                            st.caption(str(promo_hist)[:300])
+        
+        # =====================================================
+        # TAB 2: BILLET SEARCH (Constraint-Based)
+        # =====================================================
+        with tab2:
+            st.markdown("### Find Billets Using Natural Language")
+            st.caption("Search billets by rank, branch, role type, or keywords")
+            
+            # Quick Filters
+            st.markdown("#### 🎚️ Filters")
+            col_f1, col_f2, col_f3 = st.columns(3)
+            
+            with col_f1:
+                all_ranks = sorted(df['Rank'].unique())
+                filter_rank = st.selectbox("Rank", ["Any"] + all_ranks, key="billet_rank_filter")
+            
+            with col_f2:
+                all_branches = sorted(df['Branch'].unique())
+                filter_branch = st.selectbox("Branch", ["Any"] + all_branches, key="billet_branch_filter")
+            
+            with col_f3:
+                role_keywords = st.text_input(
+                    "Role Keywords",
+                    placeholder="e.g., instructor, head of, fleet...",
+                    key="billet_keywords"
+                )
+            
+            if st.button("🔍 Search Billets", type="primary", key="search_billets"):
+                progress = st.progress(0, text="Searching billets...")
+                
+                # Get all roles from constraints
+                all_roles = predictor.constraints.keys()
+                matched_billets = []
+                
+                progress.progress(0.2, text="Filtering by constraints...")
+                
+                for role in all_roles:
+                    const = predictor.constraints.get(role, {})
+                    role_ranks = const.get('ranks', [])
+                    role_branches = const.get('branches', [])
+                    
+                    match_reasons = []
+                    score = 0
+                    
+                    # Filter by rank
+                    if filter_rank != "Any":
+                        if role_ranks and filter_rank not in role_ranks:
+                            continue  # Skip - rank doesn't match
+                        elif filter_rank in role_ranks:
+                            match_reasons.append(f"✓ Rank: {filter_rank}")
+                            score += 5
+                    
+                    # Filter by branch
+                    if filter_branch != "Any":
+                        if role_branches and filter_branch not in role_branches:
+                            continue  # Skip - branch doesn't match
+                        elif filter_branch in role_branches:
+                            match_reasons.append(f"✓ Branch: {filter_branch}")
+                            score += 5
+                    
+                    # Filter by keywords
+                    if role_keywords:
+                        keywords = [k.strip().lower() for k in role_keywords.split(',')]
+                        role_lower = role.lower()
+                        keyword_matches = [kw for kw in keywords if kw in role_lower]
+                        if keywords and not keyword_matches:
+                            continue  # Skip - no keyword match
+                        for kw in keyword_matches:
+                            match_reasons.append(f"✓ Contains: '{kw}'")
+                            score += 3
+                    
+                    # If no filters applied, include all with base score
+                    if filter_rank == "Any" and filter_branch == "Any" and not role_keywords:
+                        score = 1
+                    
+                    if score > 0:
+                        matched_billets.append({
+                            'role': role,
+                            'ranks': role_ranks,
+                            'branches': role_branches,
+                            'pools': const.get('pools', []),
+                            'score': score,
+                            'reasons': match_reasons
+                        })
+                
+                progress.progress(0.8, text="Sorting results...")
+                
+                # Sort by score
+                matched_billets.sort(key=lambda x: x['score'], reverse=True)
+                st.session_state['billet_results'] = matched_billets
+                
+                progress.progress(1.0, text="Complete!")
+                progress.empty()
+            
+            # Display results
+            if st.session_state.get('billet_results'):
+                billets = st.session_state['billet_results']
+                
+                # XAI Summary
+                with st.expander("🧠 Search Summary", expanded=True):
+                    st.write(f"**Found:** {len(billets)} matching billets")
+                    filters_used = []
+                    if filter_rank != "Any":
+                        filters_used.append(f"Rank = {filter_rank}")
+                    if filter_branch != "Any":
+                        filters_used.append(f"Branch = {filter_branch}")
+                    if role_keywords:
+                        filters_used.append(f"Keywords = {role_keywords}")
+                    if filters_used:
+                        st.write(f"**Filters:** {', '.join(filters_used)}")
+                    else:
+                        st.write("**Filters:** None (showing all billets)")
+                
+                st.markdown(f"### Results ({len(billets)} billets)")
+                
+                for i, billet in enumerate(billets[:20]):
+                    with st.expander(f"#{i+1} | {billet['role']}"):
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            st.write(f"**🎖️ Required Ranks:** {', '.join(billet['ranks']) if billet['ranks'] else 'Any'}")
+                            st.write(f"**🌿 Required Branches:** {', '.join(billet['branches']) if billet['branches'] else 'Any'}")
+                        with col2:
+                            st.write(f"**🌊 Pools:** {', '.join(billet['pools']) if billet['pools'] else 'Any'}")
+                        
+                        if billet['reasons']:
+                            st.markdown("**🎯 Why Matched:**")
+                            for r in billet['reasons']:
+                                st.success(r)
+        
+        # =====================================================
+        # TAB 3: SIMILAR OFFICER FINDER
+        # =====================================================
+        with tab3:
+            st.markdown("### Find Officers with Similar Careers")
+            st.caption("Select an officer to find others with similar career trajectories")
+            
+            # Officer Selection
+            col_sel1, col_sel2 = st.columns([2, 1])
+            
+            with col_sel1:
+                # Filter options
+                filter_branch_sim = st.selectbox("Filter by Branch", ["All"] + sorted(df['Branch'].unique()), key="sim_branch")
+                
+                filtered_df = df if filter_branch_sim == "All" else df[df['Branch'] == filter_branch_sim]
+                
+                officer_options = filtered_df.apply(
+                    lambda r: f"{r['Employee_ID']} - {r['Rank']} {r['Name']} ({r['Branch']})", 
+                    axis=1
+                ).tolist()
+                
+                selected_officer = st.selectbox("Select Reference Officer", officer_options, key="sim_officer")
+            
+            with col_sel2:
+                focus = st.text_input(
+                    "Focus Area (optional)",
+                    placeholder="e.g., instructor, HoD, fleet...",
+                    key="sim_focus"
+                )
+            
+            if st.button("🔍 Find Similar Officers", type="primary", key="find_similar"):
+                if selected_officer:
+                    progress = st.progress(0, text="Finding similar officers...")
+                    
+                    ref_id = int(selected_officer.split(' - ')[0])
+                    ref_officer = df[df['Employee_ID'] == ref_id].iloc[0]
+                    
+                    progress.progress(0.2, text="Analyzing reference officer...")
+                    
+                    # Extract meaningful features from reference officer
+                    ref_branch = ref_officer['Branch']
+                    ref_rank = ref_officer['Rank']
+                    ref_pool = ref_officer['Pool']
+                    ref_entry = ref_officer['Entry_type']
+                    ref_appt = str(ref_officer.get('Appointment_history', '')).lower()
+                    ref_train = str(ref_officer.get('Training_history', '')).lower()
+                    
+                    # Identify key patterns
+                    ref_has_hod = 'head of' in ref_appt or 'hod' in ref_appt
+                    ref_has_instructor = 'instructor' in ref_appt
+                    ref_has_staff = 'staff' in ref_appt
+                    ref_has_ship = 'iss' in ref_appt or 'uss' in ref_appt or 'ship' in ref_appt
+                    ref_has_masters = 'masters' in ref_train or 'master' in ref_train
+                    ref_has_advanced = 'advanced' in ref_train or 'specialization' in ref_train
+                    
+                    progress.progress(0.4, text="Comparing officers...")
+                    
+                    # Find similar officers
+                    similarities = []
+                    for idx, row in df.iterrows():
+                        if row['Employee_ID'] == ref_id:
+                            continue
+                        
+                        sim_reasons = []
+                        sim_score = 0
+                        
+                        # Same branch
+                        if row['Branch'] == ref_branch:
+                            sim_score += 3
+                            sim_reasons.append(f"🌿 Same branch: {ref_branch}")
+                        
+                        # Same or adjacent rank
+                        if row['Rank'] == ref_rank:
+                            sim_score += 2
+                            sim_reasons.append(f"🎖️ Same rank: {ref_rank}")
+                        
+                        # Same pool
+                        if row['Pool'] == ref_pool:
+                            sim_score += 1
+                            sim_reasons.append(f"🌊 Same pool: {ref_pool}")
+                        
+                        # Same entry type
+                        if row['Entry_type'] == ref_entry:
+                            sim_score += 1
+                            sim_reasons.append(f"📅 Same entry: {ref_entry}")
+                        
+                        # Career pattern matches
+                        cand_appt = str(row.get('Appointment_history', '')).lower()
+                        cand_train = str(row.get('Training_history', '')).lower()
+                        
+                        cand_has_hod = 'head of' in cand_appt or 'hod' in cand_appt
+                        cand_has_instructor = 'instructor' in cand_appt
+                        cand_has_staff = 'staff' in cand_appt
+                        cand_has_ship = 'iss' in cand_appt or 'uss' in cand_appt or 'ship' in cand_appt
+                        cand_has_masters = 'masters' in cand_train or 'master' in cand_train
+                        cand_has_advanced = 'advanced' in cand_train or 'specialization' in cand_train
+                        
+                        if ref_has_hod and cand_has_hod:
+                            sim_score += 2
+                            sim_reasons.append("👔 Both served as Head of Department")
+                        
+                        if ref_has_instructor and cand_has_instructor:
+                            sim_score += 2
+                            sim_reasons.append("📚 Both served as Instructor")
+                        
+                        if ref_has_staff and cand_has_staff:
+                            sim_score += 1
+                            sim_reasons.append("🏢 Both had Staff appointments")
+                        
+                        if ref_has_ship and cand_has_ship:
+                            sim_score += 1
+                            sim_reasons.append("🚀 Both served on ships")
+                        
+                        if ref_has_masters and cand_has_masters:
+                            sim_score += 2
+                            sim_reasons.append("🎓 Both have Masters degree")
+                        
+                        if ref_has_advanced and cand_has_advanced:
+                            sim_score += 1
+                            sim_reasons.append("📜 Both have advanced training")
+                        
+                        # Focus area match
+                        if focus:
+                            if focus.lower() in cand_appt or focus.lower() in cand_train:
+                                sim_score += 3
+                                sim_reasons.append(f"🎯 Focus match: '{focus}'")
+                        
+                        if sim_score > 0:
+                            similarities.append({
+                                'row': row,
+                                'score': sim_score,
+                                'reasons': sim_reasons
+                            })
+                    
+                    progress.progress(0.8, text="Ranking results...")
+                    
+                    similarities.sort(key=lambda x: x['score'], reverse=True)
+                    st.session_state['similar_results'] = similarities[:20]
+                    st.session_state['similar_ref'] = ref_officer
+                    
+                    progress.progress(1.0, text="Complete!")
+                    progress.empty()
+            
+            # Display similar officers
+            if st.session_state.get('similar_results'):
+                ref = st.session_state.get('similar_ref')
+                st.markdown(f"### Officers Similar to {ref['Name']}")
+                
+                with st.expander("📊 Reference Officer Profile", expanded=True):
+                    col_ref1, col_ref2 = st.columns(2)
+                    with col_ref1:
+                        st.write(f"**{ref['Rank']} {ref['Name']}**")
+                        st.write(f"**Branch:** {ref['Branch']}")
+                        st.write(f"**Pool:** {ref['Pool']}")
+                    with col_ref2:
+                        st.write(f"**Current:** {ref['current_appointment']}")
+                        st.write(f"**Entry:** {ref['Entry_type']}")
+                
+                for i, sim in enumerate(st.session_state['similar_results'][:10]):
+                    row = sim['row']
+                    score = sim['score']
+                    
+                    with st.expander(f"#{i+1} | Score: {score} | {row['Rank']} {row['Name']} ({row['Branch']})"):
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            st.write(f"**Current:** {row['current_appointment']}")
+                            st.write(f"**Pool:** {row['Pool']}")
+                        with col2:
+                            st.write(f"**Entry:** {row['Entry_type']}")
+                        
+                        # Show meaningful similarity reasons
+                        st.markdown("**🔍 Why Similar:**")
+                        for reason in sim['reasons']:
+                            st.success(reason)
+
+
+    # =========================================================================
 if __name__ == "__main__":
     main()
-
